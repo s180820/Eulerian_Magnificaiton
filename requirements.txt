@@ -1,0 +1,9 @@
+opencv-python
+matplotlib
+seaborn
+numpy
+imutils
+#fastica
+scipy
+scikit-learn
+tk
