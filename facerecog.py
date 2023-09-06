@@ -104,6 +104,9 @@ def chosefile():
     )
 
     root = tk.Tk()
+    root.overrideredirect(True)  # hides the window
+    # sets the window transparency to 0 (invisible)
+    root.attributes("-alpha", 0)
     filename = tk.filedialog.askopenfilename(
         title='Select a file...',
         filetypes=filetypes,
@@ -128,6 +131,7 @@ def startup(arguments):
         print(["[INFO] select video file.."])
         filename = chosefile()
         print("[INFO] starting video stream from file: " + filename)
+        print("[CMD] press 'q' to exit")
         start_video_feed(network=network, video=filename)
         # open file expolorer to locate video file
 
