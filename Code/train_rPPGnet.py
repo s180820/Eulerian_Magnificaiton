@@ -5,6 +5,8 @@ import json
 import pandas as pd
 import numpy as np
 import sys
+import os
+import wandb
 
 sys.path.append('Code/Skin_segmentation')
 sys.path.append('models')
@@ -12,6 +14,21 @@ sys.path.append('models')
 import skin_detection_runfile
 from rPPGNet import *
 
+from wandb_config import wandb_defaults
+
+### WANDB
+wandb_settings = wandb_defaults.copy()
+wandb_settings.update({"dir" : "logs/" + wandb_settings.get("project") + "/" + "Eulerian"}) # create log dir
+wandb_settings.update({"name" : "Eulerian", "group": "rPPGNet"}) # set run name
+
+# create directory for logs if first run in project
+os.makedirs(wandb_settings["dir"], exist_ok=True)
+
+# init wandb
+wandb_run = wandb.init(**wandb_settings)
+
+def clear_cache():
+        os.system("rm -rf ~/.cache/wandb")
 
 '''  ###############################################################
 #
@@ -68,13 +85,12 @@ criterion_Pearson = Neg_Pearson()   # rPPG singal
 
 
 model = rPPGNet()
-
+wandb_run.watch(model)
 # Load data
 with open('Data/json_structure') as json_file:
     data = json.load(json_file)
 
 root_dir = "/work3/s174159/data/"
-
 for folder in data:
     for sub_folder in data[folder]:
         video_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["video_1"])
@@ -119,7 +135,6 @@ for folder in data:
         loss_ecg_aux = criterion_Pearson(rPPG_aux, ecg)
 
 
-
         '''   ###############################################################
         #
         #   Step 3:  loss fusion and BP  
@@ -127,6 +142,21 @@ for folder in data:
         '''   ###############################################################
 
         loss = 0.1*loss_binary +  0.5*(loss_ecg1 + loss_ecg2 + loss_ecg3 + loss_ecg4 + loss_ecg_aux) + loss_ecg
-        print(loss)
+        wandb_run.log({
+            "Train metrics/Binary_Loss":  loss_binary,
+            "Train metrics/ecg_Loss":  loss_ecg,
+            "Train metrics/ecg1_Loss":  loss_ecg1,
+            "Train metrics/ecg2_Loss":  loss_ecg2,
+            "Train metrics/ecg3_Loss":  loss_ecg3,
+            "Train metrics/ecg4_Loss":  loss_ecg4,
+            "Train metrics/ecg_aux_Loss":  loss_ecg_aux,
+            "Train metrics/Total_Loss":  loss,
+            "video":  video_path,
+                })
+            
+            # clear cache
+        clear_cache()
 
         loss.backward()
+
+wandb.finish()

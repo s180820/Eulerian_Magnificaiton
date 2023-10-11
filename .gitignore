@@ -156,6 +156,9 @@ venv.bak/
 .spyderproject
 .spyproject
 
+# wandb logs
+/logs
+
 # Rope project settings
 .ropeproject
 

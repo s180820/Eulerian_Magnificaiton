@@ -5,6 +5,7 @@ imutils
 scipy
 scikit-learn
 opencv-python
+wandb
 
 # visualization
 matplotlib
