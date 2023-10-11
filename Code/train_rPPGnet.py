@@ -66,8 +66,8 @@ criterion_Pearson = Neg_Pearson()   # rPPG singal
 #
 '''   ###############################################################
 
-
-model = rPPGNet()
+no_of_frames = 256
+model = rPPGNet(frames = no_of_frames)
 
 # Load data
 with open('Data/json_structure') as json_file:
@@ -80,12 +80,11 @@ for folder in data:
         video_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["video_1"])
         ecg_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["csv_2"])
         bb_file = root_dir + "bbox/{}/{}/{}".format(folder, sub_folder, "c920-1.face")
-        print(video_path)
 
         bb_data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w", "h"]).drop("frame", axis=1)
 
         # Usage
-        mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, bb_data)
+        mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, bb_data, frames = no_of_frames)
         ecg = pd.read_csv(ecg_path, header=None)[1].values
         # Convert and save tensors
         mask_array = np.clip(mask_array, 0, 1)
@@ -95,9 +94,6 @@ for folder in data:
         frame_tensor = torch.swapaxes(frame_tensor, 1, 3)
         frame_tensor = frame_tensor.unsqueeze(0)
         ecg = torch.tensor(np.array(ecg))
-
-        print(frame_tensor.shape)
-        print(frame_tensor.dtype)
 
         skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = model(frame_tensor)
 

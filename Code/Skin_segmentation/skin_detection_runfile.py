@@ -23,7 +23,7 @@ def convert_and_save_tensors(mask_array, frame_array, output_dir = None, saveTen
         print("Saved tensors to disk. ")
 
 
-def convert_video_with_progress(video_file, data, output_file = None, video_size = 128, mask_size = 64, outputvideo = False):
+def convert_video_with_progress(video_file, data, output_file = None, video_size = 128, mask_size = 64,frames = 64, outputvideo = False, verbosity = True):
     mask_array = []
     frame_array = []
     video = cv2.VideoCapture(video_file)
@@ -35,18 +35,58 @@ def convert_video_with_progress(video_file, data, output_file = None, video_size
     
     i = 0
 
-    total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    with tqdm(total=total_frames, unit="frames") as pbar:
+    if verbosity:
+        with tqdm(total=frames, unit="frames") as pbar:
+            try:
+                frame_counter = 0
+                print("Reading and converting video...")
+                while True:
+                    ret, frame = video.read()
+                    if frame_counter == frames: 
+                        break
+                    if not ret:
+                        print("Video ended")
+                        break
+                    
+                    # if i == len(data):
+                    #     i = 0
+                    x, y, w, h = data.iloc[i].values.astype(int)
+                    i += 1
+                    frame = frame[y:y + h, x:x + w]
+                    frame = cv2.resize(frame, (video_size, video_size), interpolation=cv2.INTER_AREA)
+
+                    detector = SkinDetector(frame)  # You need to define the SkinDetector class
+                    detector.find_skin()
+                    _, mask, skin = detector.get_resulting_images()
+                    mask = cv2.resize(mask, (mask_size, mask_size), interpolation=cv2.INTER_AREA)
+
+                    # Add mask, frame to array
+                    mask_array.append(np.array(mask, dtype='float32'))
+                    frame_array.append(np.array(frame, dtype='float32'))
+
+                    # Save the processed frame to the output video
+                    if outputvideo:
+                        out.write(skin)
+                    pbar.update(1)
+
+                    _, frame = cv2.imencode('.jpeg', skin)
+                    frame_counter += 1
+            except KeyboardInterrupt:
+                pass
+            finally:
+                video.release()
+                if outputvideo:
+                    out.release()
+                return mask_array, frame_array
+    else:
         try:
             frame_counter = 0
-            print("Reading and converting video...")
             while True:
                 ret, frame = video.read()
-                if frame_counter == 64: 
+                if frame_counter == frames: 
                     break
                 if not ret:
-                    print("Finished video...")
+                    print("Video ended.")
                     break
                 
                 # if i == len(data):
@@ -55,30 +95,27 @@ def convert_video_with_progress(video_file, data, output_file = None, video_size
                 i += 1
                 frame = frame[y:y + h, x:x + w]
                 frame = cv2.resize(frame, (video_size, video_size), interpolation=cv2.INTER_AREA)
-
                 detector = SkinDetector(frame)  # You need to define the SkinDetector class
                 detector.find_skin()
                 _, mask, skin = detector.get_resulting_images()
                 mask = cv2.resize(mask, (mask_size, mask_size), interpolation=cv2.INTER_AREA)
-
                 # Add mask, frame to array
                 mask_array.append(np.array(mask, dtype='float32'))
                 frame_array.append(np.array(frame, dtype='float32'))
-                
                 # Save the processed frame to the output video
                 if outputvideo:
-                    out.write(skin)
-                pbar.update(1)
-                
+                     out.write(skin)
+
                 _, frame = cv2.imencode('.jpeg', skin)
                 frame_counter += 1
         except KeyboardInterrupt:
-            pass
+                pass
         finally:
             video.release()
             if outputvideo:
-                out.release()
+                    out.release()
             return mask_array, frame_array
+
 
 def create_directory_if_not_exists(directory):
     if not os.path.exists(directory):
