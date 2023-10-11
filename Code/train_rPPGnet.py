@@ -82,10 +82,10 @@ for folder in data:
         bb_file = root_dir + "bbox/{}/{}/{}".format(folder, sub_folder, "c920-1.face")
         print(video_path)
 
-        data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w", "h"]).drop("frame", axis=1)
+        bb_data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w", "h"]).drop("frame", axis=1)
 
         # Usage
-        mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, data)
+        mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, bb_data)
         ecg = pd.read_csv(ecg_path, header=None)[1].values
         # Convert and save tensors
         mask_array = np.clip(mask_array, 0, 1)
