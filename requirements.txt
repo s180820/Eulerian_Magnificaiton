@@ -9,6 +9,7 @@ opencv-python
 # visualization
 matplotlib
 seaborn
+tqdm
 
 # app
 tk
