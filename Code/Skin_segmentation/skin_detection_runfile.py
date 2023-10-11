@@ -10,19 +10,19 @@ import os
 print("Finished...")
 
 
-def convert_and_save_tensors(mask_array, frame_array, outputdir):
+def convert_and_save_tensors(mask_array, frame_array, output_dir = None, saveTensors = False):
     """
     Saving arrays as tensors. 
     """
     mask_tensor = torch.tensor(np.array(mask_array))
     frame_tensor = torch.tensor(np.array(frame_array))
-    torch.save(mask_tensor, output_dir + 'mask_tensor.pt')
-    torch.save(frame_tensor, output_dir + 'frame_tensor.pt')
-    
-    print("Saved tensors to disk. ")
+    if saveTensors: 
+        torch.save(mask_tensor, output_dir + 'mask_tensor.pt')
+        torch.save(frame_tensor, output_dir + 'frame_tensor.pt')
+        print("Saved tensors to disk. ")
 
 
-def convert_video_with_progress(video_file, data, output_file, video_size = 128, mask_size = 64, outputvideo = False):
+def convert_video_with_progress(video_file, data, output_file = None, video_size = 128, mask_size = 64, outputvideo = False):
     mask_array = []
     frame_array = []
     video = cv2.VideoCapture(video_file)
@@ -97,4 +97,4 @@ output_file = os.path.join(output_dir, 'output_video.mp4')
 mask_array, frame_array = convert_video_with_progress(video_file, data, output_file, outputvideo=False)
 
 # Convert and save tensors
-convert_and_save_tensors(mask_array, frame_array, output_dir)
+convert_and_save_tensors(mask_array, frame_array, output_dir = output_dir, saveTensors=False)
