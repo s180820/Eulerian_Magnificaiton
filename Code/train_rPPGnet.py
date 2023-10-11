@@ -88,7 +88,7 @@ for folder in data:
         mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, data)
         ecg = pd.read_csv(ecg_path, header=None)[1].values
         # Convert and save tensors
-        mask_array = np.clip(mask_array, 0, 1).astype(np.uint8)
+        mask_array = np.clip(mask_array, 0, 1)
         skin_seg_label = torch.tensor(np.array(mask_array))
         frame_tensor = torch.tensor(np.array(frame_array))
         frame_tensor = torch.swapaxes(frame_tensor, 0, 3)
@@ -99,7 +99,7 @@ for folder in data:
         print(frame_tensor)
         print(frame_tensor.dtype)
 
-        skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = model(frame_tensor.byte())
+        skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = model(frame_tensor)
 
 
         loss_binary = criterion_Binary(skin_map, skin_seg_label)  
