@@ -1,10 +1,20 @@
-opencv-python
-matplotlib
-seaborn
+# essentials
 numpy
+pandas
 imutils
-#fastica
 scipy
 scikit-learn
+opencv-python
+
+# visualization
+matplotlib
+seaborn
+
+# app
 tk
 streamlit
+
+#torch
+torch 
+torchvision 
+torchaudio 
