@@ -22,12 +22,15 @@ def convert_and_save_tensors(mask_array, frame_array, outputdir):
     print("Saved tensors to disk. ")
 
 
-def convert_video_with_progress(video_file, data, output_file, video_size = 128, mask_size = 64):
+def convert_video_with_progress(video_file, data, output_file, video_size = 128, mask_size = 64, outputvideo = False):
     mask_array = []
     frame_array = []
     video = cv2.VideoCapture(video_file)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_file, fourcc, 30, (video_size, video_size))
+    
+    # Video capture flag.
+    if outputvideo: 
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_file, fourcc, 30, (video_size, video_size))
     
     i = 0
 
@@ -69,7 +72,8 @@ def convert_video_with_progress(video_file, data, output_file, video_size = 128,
             pass
         finally:
             video.release()
-            out.release()
+            if outputvideo:
+                out.release()
             return mask_array, frame_array
 
 def create_directory_if_not_exists(directory):
@@ -90,7 +94,7 @@ data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w",
 output_file = os.path.join(output_dir, 'output_video.mp4')
 
 # Usage
-mask_array, frame_array = convert_video_with_progress(video_file, data, output_file)
+mask_array, frame_array = convert_video_with_progress(video_file, data, output_file, outputvideo=False)
 
 # Convert and save tensors
 convert_and_save_tensors(mask_array, frame_array, output_dir)
