@@ -64,7 +64,8 @@ def convert_video_with_progress(video_file, data, output_file = None, video_size
 
                 
                 # Save the processed frame to the output video
-                out.write(skin)
+                if outputvideo:
+                    out.write(skin)
                 pbar.update(1)
                 
                 _, frame = cv2.imencode('.jpeg', skin)
@@ -82,19 +83,19 @@ def create_directory_if_not_exists(directory):
 
 
 # Set directories: 
+if __name__ == "__main__":
+    root_dir = "/work3/s174159/data/"
+    bb_file = root_dir + "bbox/00/01/c920-1.face"
+    video_file = root_dir + "00/01/c920-1.avi"
 
-root_dir = "/work3/s174159/data/"
-bb_file = root_dir + "bbox/00/01/c920-1.face"
-video_file = root_dir + "00/01/c920-1.avi"
+    output_dir = '/zhome/01/d/127159/Desktop/Eulerian_Magnificaiton/output_dir/Skin_segmentation/'
+    create_directory_if_not_exists(output_dir) 
 
-output_dir = '/zhome/01/d/127159/Desktop/Eulerian_Magnificaiton/output_dir/Skin_segmentation/'
-create_directory_if_not_exists(output_dir) 
+    data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w", "h"]).drop("frame", axis=1)
+    output_file = os.path.join(output_dir, 'output_video.mp4')
 
-data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w", "h"]).drop("frame", axis=1)
-output_file = os.path.join(output_dir, 'output_video.mp4')
+    # Usage
+    mask_array, frame_array = convert_video_with_progress(video_file, data, output_file, outputvideo=False)
 
-# Usage
-mask_array, frame_array = convert_video_with_progress(video_file, data, output_file, outputvideo=False)
-
-# Convert and save tensors
-convert_and_save_tensors(mask_array, frame_array, output_dir = output_dir, saveTensors=False)
+    # Convert and save tensors
+    convert_and_save_tensors(mask_array, frame_array, output_dir = output_dir, saveTensors=False)
