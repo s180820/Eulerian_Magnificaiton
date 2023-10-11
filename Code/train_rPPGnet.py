@@ -89,14 +89,14 @@ for folder in data:
         ecg = pd.read_csv(ecg_path, header=None)[1].values
         # Convert and save tensors
         mask_array = np.clip(mask_array, 0, 1)
-        skin_seg_label = torch.tensor(np.array(mask_array))
+        skin_seg_label = torch.tensor(np.array(mask_array)).unsqueeze(0)
         frame_tensor = torch.tensor(np.array(frame_array))
         frame_tensor = torch.swapaxes(frame_tensor, 0, 3)
         frame_tensor = torch.swapaxes(frame_tensor, 1, 3)
-        
+        frame_tensor = frame_tensor.unsqueeze(0)
         ecg = torch.tensor(np.array(ecg))
 
-        print(frame_tensor)
+        print(frame_tensor.shape)
         print(frame_tensor.dtype)
 
         skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = model(frame_tensor)
@@ -127,5 +127,6 @@ for folder in data:
         '''   ###############################################################
 
         loss = 0.1*loss_binary +  0.5*(loss_ecg1 + loss_ecg2 + loss_ecg3 + loss_ecg4 + loss_ecg_aux) + loss_ecg
+        print(loss)
 
         loss.backward()

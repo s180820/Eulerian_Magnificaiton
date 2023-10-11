@@ -36,14 +36,15 @@ def convert_video_with_progress(video_file, data, output_file = None, video_size
     i = 0
 
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-    print(total_frames)
     
     with tqdm(total=total_frames, unit="frames") as pbar:
         try:
+            frame_counter = 0
             print("Reading and converting video...")
             while True:
                 ret, frame = video.read()
-                print("ret:", ret)
+                if frame_counter == 64: 
+                    break
                 if not ret:
                     print("Finished video...")
                     break
@@ -61,9 +62,8 @@ def convert_video_with_progress(video_file, data, output_file = None, video_size
                 mask = cv2.resize(mask, (mask_size, mask_size), interpolation=cv2.INTER_AREA)
 
                 # Add mask, frame to array
-                mask_array.append(mask)
-                frame_array.append(frame)
-                print(len(frame_array))
+                mask_array.append(np.array(mask, dtype='float32'))
+                frame_array.append(np.array(frame, dtype='float32'))
                 
                 # Save the processed frame to the output video
                 if outputvideo:
@@ -71,6 +71,7 @@ def convert_video_with_progress(video_file, data, output_file = None, video_size
                 pbar.update(1)
                 
                 _, frame = cv2.imencode('.jpeg', skin)
+                frame_counter += 1
         except KeyboardInterrupt:
             pass
         finally:
