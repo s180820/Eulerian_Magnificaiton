@@ -16,6 +16,7 @@ def convert_and_save_tensors(mask_array, frame_array, output_dir = None, saveTen
     """
     mask_tensor = torch.tensor(np.array(mask_array))
     frame_tensor = torch.tensor(np.array(frame_array))
+    print(frame_tensor.shape)
     if saveTensors: 
         torch.save(mask_tensor, output_dir + 'mask_tensor.pt')
         torch.save(frame_tensor, output_dir + 'frame_tensor.pt')
@@ -35,18 +36,20 @@ def convert_video_with_progress(video_file, data, output_file = None, video_size
     i = 0
 
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    print(total_frames)
     
     with tqdm(total=total_frames, unit="frames") as pbar:
         try:
             print("Reading and converting video...")
             while True:
                 ret, frame = video.read()
+                print("ret:", ret)
                 if not ret:
                     print("Finished video...")
                     break
                 
-                if i == len(data):
-                    i = 0
+                # if i == len(data):
+                #     i = 0
                 x, y, w, h = data.iloc[i].values.astype(int)
                 i += 1
                 frame = frame[y:y + h, x:x + w]
@@ -60,11 +63,11 @@ def convert_video_with_progress(video_file, data, output_file = None, video_size
                 # Add mask, frame to array
                 mask_array.append(mask)
                 frame_array.append(frame)
-
-
+                print(len(frame_array))
                 
                 # Save the processed frame to the output video
-                out.write(skin)
+                if outputvideo:
+                    out.write(skin)
                 pbar.update(1)
                 
                 _, frame = cv2.imencode('.jpeg', skin)
