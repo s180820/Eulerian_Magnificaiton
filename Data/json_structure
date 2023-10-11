@@ -1,0 +1,642 @@
+{
+    "01": {
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "15": {
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "09": {
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "05": {
+        "01": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "10": {
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "03": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "16": {
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "03": {
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "03": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "06": {
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "02": {
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "14": {
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "13": {
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "11": {
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "12": {
+        "03": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "07": {
+        "01": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "03": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "00": {
+        "03": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "08": {
+        "03": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    },
+    "04": {
+        "03": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "04": {
+            "video_1": "c920-2.avi",
+            "video_2": "c920-1.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "02": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "06": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "01": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        },
+        "05": {
+            "video_1": "c920-1.avi",
+            "video_2": "c920-2.avi",
+            "csv_1": "viatom-raw.csv",
+            "csv_2": "c920.csv"
+        }
+    }
+}
