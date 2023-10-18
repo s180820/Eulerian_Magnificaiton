@@ -7,6 +7,8 @@ import numpy as np
 import sys
 import os
 import wandb
+import pickle
+from scipy import signal
 
 sys.path.append('Code/Skin_segmentation')
 sys.path.append('models')
@@ -90,9 +92,10 @@ criterion_Pearson = Neg_Pearson()   # rPPG singal
 #
 '''   ###############################################################
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(device)
 
-
-no_of_frames = 64
+no_of_frames = 1500
 model = rPPGNet(frames = no_of_frames)
 wandb_run.watch(model)
 
@@ -103,6 +106,7 @@ wandb_run.watch(model)
 rate_learning = 1e-4
 optim = torch.optim.Adam(model.parameters(), lr=rate_learning)
 
+
 # Load data
 with open('Data/json_structure') as json_file:
     data = json.load(json_file)
@@ -112,6 +116,7 @@ for folder in data:
     for sub_folder in data[folder]:
         video_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["video_1"])
         ecg_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["csv_1"])
+        index_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["csv_2"])
         bb_file = root_dir + "bbox/{}/{}/{}".format(folder, sub_folder, "c920-1.face")
         bb_data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w", "h"]).drop("frame", axis=1)
 
@@ -119,23 +124,32 @@ for folder in data:
         # Usage
         mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, bb_data, frames = no_of_frames)
         #ecg = pd.read_csv(ecg_path)["ECG HR"].values[:no_of_frames]
-        ecg = pd.read_csv(ecg_path).groupby(by="milliseconds").mean()
-        ecg = ecg[" ECG"].values[1:no_of_frames + 1]
+        idx = pd.read_csv(index_path, header=None, names=["timestamp", "idx_sig"])
+        ecg = pd.read_csv(ecg_path)
+
+        #Smoothing ECG Signal
+        ecg[" ECG"] = signal.detrend(ecg[" ECG"])
+        ecg["ECG_norm"] = (ecg[" ECG"] - ecg[" ECG"].mean()) / ecg[" ECG"].std()
+        ecg["moving_average"] = median_filter(ecg["ECG_norm"].values, 5)
+        ecg = ecg.iloc[idx.iloc[1].idx_sig:idx.iloc[-1].idx_sig + 5] # Getting the correct frames
+        ecg = ecg.groupby(by="milliseconds").mean()["moving_average"].values
+        print(len(ecg))
         # Convert and save tensors
-        mask_array = np.clip(mask_array, 0, 1)
+        mask_array = np.clip(mask_array[1:], 0, 1)
         skin_seg_label = torch.tensor(np.array(mask_array)).unsqueeze(0)
-        frame_tensor = torch.tensor(np.array(frame_array))
+        frame_tensor = torch.tensor(np.array(frame_array[1:]))
         frame_tensor = torch.swapaxes(frame_tensor, 0, 3)
         frame_tensor = torch.swapaxes(frame_tensor, 1, 2)
         frame_tensor = torch.swapaxes(frame_tensor, 1, 3)
-        frame_tensor = frame_tensor.unsqueeze(0)
+        frame_tensor = frame_tensor.unsqueeze(0) # [1, 3, no_of_frames, 128, 128]
         
         	
         ecg = torch.tensor(np.array(ecg))
-        ecg = (ecg-torch.mean(ecg)) /torch.std(ecg)
-        ecg = torch.tensor(median_filter(ecg, 5))
+        ecg = (ecg-torch.mean(ecg)) /torch.std(ecg) # normalisation
+        #ecg = torch.tensor(median_filter(ecg, 3))
+        print(ecg)
         
-       # ecg = torch.rand(no_of_frames)
+        # ecg = torch.rand(no_of_frames)
 
         optim.zero_grad()
         
@@ -147,6 +161,9 @@ for folder in data:
         rPPG_SA4 = (rPPG_SA4-torch.mean(rPPG_SA4)) /torch.std(rPPG_SA4)	 	# normalize2
         rPPG_aux = (rPPG_aux-torch.mean(rPPG_aux)) /torch.std(rPPG_aux)	 	# normalize2
         
+        with open('test.pickle', 'wb') as handle:
+            pickle.dump((ecg, rPPG), handle)
+
         loss_binary = criterion_Binary(skin_map, skin_seg_label) 
         loss_ecg = criterion_Pearson(rPPG, ecg)
         loss_ecg1 = criterion_Pearson(rPPG_SA1, ecg)
