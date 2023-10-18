@@ -64,7 +64,14 @@ class Neg_Pearson(torch.nn.Module):    # Pearson range [-1, 1] so if < 0, abs|lo
         loss = loss/preds.shape[0]
         return loss
 
-
+def median_filter(data, window_size):
+    filtered_data = np.zeros(len(data))
+    for i in range(len(data)):
+        start = max(0, i - window_size//2)
+        end = min(len(data), i + window_size//2 + 1)
+        window = data[start:end]
+        filtered_data[i] = np.median(window)
+    return filtered_data
 
 criterion_Binary = torch.nn.BCELoss()  # binary segmentation
 criterion_Pearson = Neg_Pearson()   # rPPG singal 
@@ -85,47 +92,62 @@ criterion_Pearson = Neg_Pearson()   # rPPG singal
 
 
 
-no_of_frames = 256
+no_of_frames = 64
 model = rPPGNet(frames = no_of_frames)
 wandb_run.watch(model)
+
+#for name, param in model.named_parameters():
+ #   if param.requires_grad:
+  #      print(name)
+
+rate_learning = 1e-4
+optim = torch.optim.Adam(model.parameters(), lr=rate_learning)
 
 # Load data
 with open('Data/json_structure') as json_file:
     data = json.load(json_file)
-
+i = 0
 root_dir = "/work3/s174159/data/"
 for folder in data:
     for sub_folder in data[folder]:
         video_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["video_1"])
-        ecg_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["csv_2"])
+        ecg_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["csv_1"])
         bb_file = root_dir + "bbox/{}/{}/{}".format(folder, sub_folder, "c920-1.face")
-
         bb_data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w", "h"]).drop("frame", axis=1)
 
+        print(video_path)
         # Usage
         mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, bb_data, frames = no_of_frames)
-        ecg = pd.read_csv(ecg_path, header=None)[1].values
+        #ecg = pd.read_csv(ecg_path)["ECG HR"].values[:no_of_frames]
+        ecg = pd.read_csv(ecg_path).groupby(by="milliseconds").mean()
+        ecg = ecg[" ECG"].values[1:no_of_frames + 1]
         # Convert and save tensors
         mask_array = np.clip(mask_array, 0, 1)
         skin_seg_label = torch.tensor(np.array(mask_array)).unsqueeze(0)
         frame_tensor = torch.tensor(np.array(frame_array))
         frame_tensor = torch.swapaxes(frame_tensor, 0, 3)
+        frame_tensor = torch.swapaxes(frame_tensor, 1, 2)
         frame_tensor = torch.swapaxes(frame_tensor, 1, 3)
         frame_tensor = frame_tensor.unsqueeze(0)
+        
+        	
         ecg = torch.tensor(np.array(ecg))
+        ecg = (ecg-torch.mean(ecg)) /torch.std(ecg)
+        ecg = torch.tensor(median_filter(ecg, 5))
+        
+       # ecg = torch.rand(no_of_frames)
 
+        optim.zero_grad()
+        
         skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = model(frame_tensor)
-
-
-        loss_binary = criterion_Binary(skin_map, skin_seg_label)  
-
         rPPG = (rPPG-torch.mean(rPPG)) /torch.std(rPPG)	 	# normalize2
         rPPG_SA1 = (rPPG_SA1-torch.mean(rPPG_SA1)) /torch.std(rPPG_SA1)	 	# normalize2
         rPPG_SA2 = (rPPG_SA2-torch.mean(rPPG_SA2)) /torch.std(rPPG_SA2)	 	# normalize2
         rPPG_SA3 = (rPPG_SA3-torch.mean(rPPG_SA3)) /torch.std(rPPG_SA3)	 	# normalize2
         rPPG_SA4 = (rPPG_SA4-torch.mean(rPPG_SA4)) /torch.std(rPPG_SA4)	 	# normalize2
         rPPG_aux = (rPPG_aux-torch.mean(rPPG_aux)) /torch.std(rPPG_aux)	 	# normalize2
-
+        
+        loss_binary = criterion_Binary(skin_map, skin_seg_label) 
         loss_ecg = criterion_Pearson(rPPG, ecg)
         loss_ecg1 = criterion_Pearson(rPPG_SA1, ecg)
         loss_ecg2 = criterion_Pearson(rPPG_SA2, ecg)
@@ -152,10 +174,16 @@ for folder in data:
             "Train metrics/Total_Loss":  loss,
             "video":  video_path,
                 })
-            
+        print("Loss for iteration", i, ":", loss.item())
+        print("Loss for ecg1: ", loss_ecg1.item())
+        print("Loss for ecg2: ", loss_ecg2.item())
+        print("Loss for ecg3: ", loss_ecg3.item())
+        print("Loss for ecg4: ", loss_ecg4.item())
+        i += 1
             # clear cache
         clear_cache()
 
         loss.backward()
+        optim.step()
 
 wandb.finish()
