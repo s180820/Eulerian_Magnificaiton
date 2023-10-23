@@ -157,9 +157,6 @@ for folder in data:
         #ecg = ecg.groupby(by="milliseconds").mean()
         #mov_avg = mov_avg[idx.iloc[1].idx_sig:idx.iloc[-1].idx_sig + 4]
         ecg = ecg["ECG_MV"][1:no_of_frames+1].values #get only the first number of specified frames
-        #print(ecg)
-        #print(mov_avg)
-        #print(len(mov_avg))
 
         assert len(ecg) == no_of_frames
         #print(ecg)
@@ -200,7 +197,8 @@ for folder in data:
         loss_ecg4 = criterion_Pearson(rPPG_SA4, ecg)
         loss_ecg_aux = criterion_Pearson(rPPG_aux, ecg)
         
-        MSE_err = criterion_MSE(rPPG[0], ecg)
+        MSE_err = criterion_MSE(rPPG.squeeze(), ecg)
+        print(MSE_err)
 
         '''   ###############################################################
         #
@@ -209,6 +207,7 @@ for folder in data:
         '''   ###############################################################
 
         loss = 0.1*loss_binary +  0.5*(loss_ecg1 + loss_ecg2 + loss_ecg3 + loss_ecg4 + loss_ecg_aux) + loss_ecg
+        #loss = MSE_err
         wandb_run.log({
             "Train metrics/Binary_Loss":  loss_binary,
             "Train metrics/ecg_Loss":  loss_ecg,
