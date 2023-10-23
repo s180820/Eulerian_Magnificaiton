@@ -1,7 +1,6 @@
-import glob
-from IPython.display import Video, HTML
+
+import numpy as np
 import os
-import cv2
 import sys
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
@@ -15,7 +14,7 @@ sys.path.append('models')
 import skin_detection_runfile
 from rPPGNet import *
 
-import helper_functions as helper_functions
+from helper_functions import helper_functions
 
 class CustomDataset(Dataset):
     def __init__(self, root_dir, json_file, frames = 64):  # Adjust the resolution as needed
@@ -32,47 +31,48 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def load_video_frames(self, video_path, bb_data):
+        print("Converting")
         mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, bb_data, frames = self.frames)
+        mask_array = helper_functions.binary_mask(mask_array)
+        print("Here 2")
         return mask_array, frame_array
     
     def load_ecg_data(self, ecg_path, index_path):
+        idx = pd.read_csv(index_path, header = None, names = ["timestamp", "idx_sig"])
         ecg = pd.read_csv(ecg_path)
-        ecg[" ECG"] = signal.detrend(ecg[" ECG HR"])  # Detrending
-        ecg["ECG_norm"] = (ecg[" ECG"] - ecg[" ECG"].mean()) / ecg[" ECG"].std()  # Normalizing
-        ecg = ecg.iloc[::5, :]  # Choosing only the signal picked up by the vitacom
-        ecg["ECG_MV"] = helper_functions.moving_average(ecg["ECG_norm"], 5)  # Calculate 5 point moving average
-        
-        idx = pd.read_csv(index_path, header=None, names=["timestamp", "idx_sig"])
-        ecg = ecg.iloc[int(idx.iloc[0].idx_sig/5):]
-        
-        ecg = ecg["ECG_MV"][1:self.frames+1].values  # Get the first specified frames
+        helper_functions.smooth_ecg(ecg, idx)
         return ecg
     
     def __getitem__(self, idx):
-        folder, sub_folder, video_file, ecg_file, index_file, bb_file = self.data[idx]
-        video_path = os.path.join(self.root_dir, folder, sub_folder, video_file)
-        ecg_path = os.path.join(self.root_dir, folder, sub_folder, ecg_file)
-        index_path = os.path.join(self.root_dir, folder, sub_folder, index_file)
+        folder = list(self.data.keys())[idx]  # Access the folder at the given index
+        sub_folder = list(self.data[folder].keys())[0]  # Access the first sub-folder
+
+        video_path = os.path.join(self.root_dir, folder, sub_folder, self.data[folder][sub_folder]["video_1"])
+        ecg_path = os.path.join(self.root_dir, folder, sub_folder, self.data[folder][sub_folder]["csv_1"])
+        index_path = os.path.join(self.root_dir, folder, sub_folder, self.data[folder][sub_folder]["csv_2"])
         bb_file = os.path.join(self.root_dir, "bbox", folder, sub_folder, "c920-1.face")
         bb_data = pd.read_csv(bb_file, sep=" ", header=None, names=["frame", "x", "y", "w", "h"]).drop("frame", axis=1)
+
         if "c920-1" not in video_path:
-            video_path = os.path.join(self.root_dir, folder, sub_folder, data[folder][sub_folder]["video_2"])
-
-
+            video_path = os.path.join(self.root_dir, folder, sub_folder, self.data[folder][sub_folder]["video_2"])
 
         mask_array, frame_array,  = self.load_video_frames(video_path, bb_data)
-        ecg_data = self.load_ecg_data(ecg_path, index_path)
+        print("Mask arryas")
+        ecg = self.load_ecg_data(ecg_path, index_path)
 
-        return video_tensor, ecg_tensor
+        skin_seg_label, frame_tensor, ecg_tensor = helper_functions.tensor_transform(mask_array, frame_array, ecg)
+
+        return skin_seg_label, frame_tensor, ecg_tensor
 # Define your data and DataLoader
-json_file = 'Data/json_structure.json'
+json_file = 'Data/json_structure'
 root_dir = "/work3/s174159/data/"
 frames = 64
-custom_dataset = CustomDataset(json_file, root_dir, frames=frames)
+custom_dataset = CustomDataset(json_file=json_file, root_dir=root_dir, frames=frames)
 data_loader = DataLoader(custom_dataset, batch_size=1, shuffle=True)
 
 # Iterate through the DataLoader to access your data
-for i, (video_tensor, ecg_tensor) in enumerate(data_loader):
-    print(f"Batch {i}, Video Tensor Shape: {video_tensor.shape}")
+for i, (skin_seg_label, frame_tensor, ecg_tensor) in enumerate(data_loader):
+    print(f"Batch {i}, skin_seg_label: {skin_seg_label}")
+    print(f"Batch {i}, Video Tensor Shape: {frame_tensor.shape}")
     print(f"Batch {i}, ECG Tensor Shape: {ecg_tensor.shape}")
     # Your training code here
