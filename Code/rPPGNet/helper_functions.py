@@ -50,7 +50,7 @@ class helper_functions:
                         ecg_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["csv_1"])
                         index_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["csv_2"])
                         bb_path = root_dir + "bbox/{}/{}/{}".format(folder, sub_folder, "c920-1.face")
-                        print(video_path, bb_path)
+                        #print(video_path, bb_path)
                         if "c920-1" not in video_path: #make sure bb_file fits video_file
                               video_path = root_dir + "{}/{}/{}".format(folder, sub_folder, data[folder][sub_folder]["video_2"])
                         if helper_functions.check_files_exist(video_path, ecg_path, index_path, bb_path):
