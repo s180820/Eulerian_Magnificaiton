@@ -195,7 +195,7 @@ class Predictor:
         self.set_optimizer()
         
         # set best acc
-        self.best_test_loss = 0
+        self.best_test_loss = 2
 
 
     def train_step(self, data, target, target_skin):
@@ -293,7 +293,7 @@ class Predictor:
             
             # Save model
             if self.model_save_freq is None:
-                if test_loss > self.best_test_loss:
+                if test_loss < self.best_test_loss:
                     self.best_test_loss = test_loss
                     self.save_model(f"logs/Eulerian/models/{self.name}/model.pth", epoch)
             elif epoch % self.model_save_freq == 0:
@@ -377,7 +377,7 @@ class Predictor:
             test_loss_ecg4 += self.loss_fun(rPPG_SA4, target)
             test_loss_ecg_aux += self.loss_fun(rPPG_aux, target)
 
-            test_loss += 0.1*test_loss_binary +  0.5*(test_loss_ecg1 + test_loss_ecg2 + test_loss_ecg3 + test_loss_ecg4 + test_loss_ecg_aux) + test_loss_ecg
+            test_loss += 0.1*test_loss_binary + 0.5*(test_loss_ecg1 + test_loss_ecg2 + test_loss_ecg3 + test_loss_ecg4 + test_loss_ecg_aux) + test_loss_ecg
             
 
         # compute stats
@@ -415,7 +415,7 @@ class Predictor:
 
 
 if __name__ == "__main__":
-    predictor = Predictor(project="Eulerian_mag", name = "rPPGNet", model = "rPPGNet", use_wandb=True, optimizer = "Adam",)
+    predictor = Predictor(project="Eulerian_mag", model = "rPPGNet", use_wandb=True, optimizer = "Adam",)
     # classifier.dev_mode = True
     predictor.train(num_epochs=50)
     # classifier.sweep()
