@@ -23,10 +23,12 @@ class helper_functions:
 
             return final_list
 
-      def smooth_ecg(ecg, idx):
+      def smooth_ecg(ecg, idx, train=True):
             ecg[" ECG"] = signal.detrend(ecg[" ECG HR"])
             ecg["ECG_norm"] = ecg[" ECG"] - ecg[" ECG"].mean() / ecg[" ECG"].std() # Normalize
             ecg = ecg.iloc[::5,:]
+            if not train:
+                  return ecg[" ECG HR"]
             ecg["ECG_MV"] = helper_functions.moving_average(ecg["ECG_norm"], 5)
             ecg = ecg.iloc[int(idx.iloc[0].idx_sig/5):]
             return ecg

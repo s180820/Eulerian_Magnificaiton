@@ -17,10 +17,15 @@ from rPPGNet import *
 from helper_functions import helper_functions
 
 class CustomDataset(Dataset):
-    def __init__(self, root_dir, json_file, frames = 64):  # Adjust the resolution as needed
+    def __init__(self, root_dir, json_file, frames = 64, train=True):  # Adjust the resolution as needed
         self.root_dir = root_dir
         self.frames  = frames
         self.data = self.load_data(json_file)
+        self.train = train
+
+        if self.train:
+            self.train_subset, self.val_subset = torch.utils.data.random_split(
+        self, [0.8, 0.2], generator=torch.Generator().manual_seed(1))
     
     def load_data(self, json_file):
         with open(json_file) as file:
@@ -39,7 +44,7 @@ class CustomDataset(Dataset):
     def load_ecg_data(self, ecg_path, index_path):
         idx = pd.read_csv(index_path, header = None, names = ["timestamp", "idx_sig"])
         ecg = pd.read_csv(ecg_path)
-        ecg = helper_functions.smooth_ecg(ecg, idx)
+        ecg = helper_functions.smooth_ecg(ecg, idx, self.train)
         return ecg
     
     def __getitem__(self, idx):

@@ -331,42 +331,32 @@ class Predictor:
         print("Performing test with {} images".format(data_len))
         
         # Init counters
-        test_correct = 0
         test_loss = 0
         
-        # conf matrix
-        true_positive, true_negative, false_positive, false_negative = 0, 0, 0, 0
         
         # Test the model
         self.model.eval()
-        for data, target in data_loader:
+        for target_skin, data, target in data_loader:
             data = data.to(self.device)
             with torch.no_grad():
-                output = self.model(data)
-            predicted = output.argmax(1).cpu()
+                skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = self.model(data)
+            
 
             # Update counters
-            test_loss += self.loss_fun(output.cpu(), target).item()
+            test_loss += self.loss_fun(rPPG.cpu(), target).item()
             
-            # save images
-            if save_images > 0:
-                self.save_images(data, target, predicted, output, save_images)
 
         # compute stats
         test_loss /= len(data_loader)
 
         # calculate confusion matrix      
         test_loss /= len(data_loader)
-        # conf_mat = {"true_positive": true_positive/data_len, "true_negative": true_negative/data_len, "false_positive": false_positive/data_len, "false_negative": false_negative/data_len}
-        conf_mat = {"true_positive": true_positive, "true_negative": true_negative, "false_positive": false_positive, "false_negative": false_negative}
         
-        if self.verbose:
-            print("Accuracy test: {test:.1f}%".format(test=test_acc))
+        #if self.verbose:
+            #print("Accuracy test: {test:.1f}%".format(test=test_acc))
 
-        if self.show_test_images:
-            self.create_test_images(data, target, predicted, output)
 
-        return test_acc, test_loss, conf_mat
+        return test_loss
 
 
    # def sweep(self, **kwargs):
