@@ -73,6 +73,7 @@ class Predictor:
         self.dev_mode = False
         self.wandb_run = None
         self.test_images = []
+        self._class = "[Predictor]"
 
         # set model
         # print(f"Setting model to {model}")
@@ -89,17 +90,17 @@ class Predictor:
         
     
     def load_model(self, path, model_name = "model.pth"):
-        print(f"Loading model from {path}")
+        print(f"{self._class} Loading model from {path}")
         if path.startswith("wandb:"):
             dl_path = "logs/Eulerian_Magnification/models/latest_from_wandb"
             path = path[6:]
-            print(f"Downloading model from wandb: {path}")
+            print(f"{self._class} Downloading model from wandb: {path}")
             path = download_model(path, dl_path)
         
         self.model.load_state_dict(torch.load(path+"/"+model_name, map_location=torch.device(self.device)))           
         
     def set_model(self, model):
-        print(f"Setting model to {model}")
+        print(f"{self._class} Setting model to {model}")
         
         transfer_learning = model.lower() in ["resnet18"]
         # if model.lower() == "resnet18":
@@ -235,7 +236,7 @@ class Predictor:
         # prepare training
         num_epochs = self.config.get("num_epochs") if num_epochs is None else num_epochs
         self.prepare(cuda_device)
-        print(f"Starting training on {self.device.type}")
+        print(f"{self._class} Starting training on {self.device.type}")
 
         for epoch in tqdm(range(num_epochs), unit='epoch'):
             
@@ -276,7 +277,7 @@ class Predictor:
             ecg_aux_loss /= len(self.train_loader)
             
             if self.verbose:
-                print("Train Loss: {train:.1f}%".format(train=train_loss))
+                print(f"{self._class} Train Loss: {train_loss:.1f}%")
             
             # test 
             #val_acc, val_loss, conf_mat = self.test(validation=True)
@@ -328,7 +329,7 @@ class Predictor:
             data_loader = self.test_loader
         data_len = len(data_loader.dataset)
         
-        print("Performing test with {} images".format(data_len))
+        print(f"{self._class} Performing test with {data_len} images")
         
         # Init counters
         test_correct = 0
@@ -360,13 +361,11 @@ class Predictor:
         # conf_mat = {"true_positive": true_positive/data_len, "true_negative": true_negative/data_len, "false_positive": false_positive/data_len, "false_negative": false_negative/data_len}
         conf_mat = {"true_positive": true_positive, "true_negative": true_negative, "false_positive": false_positive, "false_negative": false_negative}
         
-        if self.verbose:
-            print("Accuracy test: {test:.1f}%".format(test=test_acc))
 
         if self.show_test_images:
             self.create_test_images(data, target, predicted, output)
 
-        return test_acc, test_loss, conf_mat
+        return test_loss, conf_mat
 
 
    # def sweep(self, **kwargs):
@@ -388,7 +387,7 @@ class Predictor:
 
 if __name__ == "__main__":
     predictor = Predictor(project="Eulerian_mag", name = "rPPGNet", 
-                                  show_test_images=False, model = "rPPGNet", use_wandb=True, optimizer = "Adam",)
+                                  show_test_images=False, model = "rPPGNet", use_wandb=False, optimizer = "Adam",)
     # classifier.dev_mode = True
     predictor.train(num_epochs=50)
     # classifier.sweep()

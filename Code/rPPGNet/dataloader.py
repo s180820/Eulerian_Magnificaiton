@@ -13,7 +13,8 @@ sys.path.append('Code/Skin_segmentation')
 sys.path.append('Models')
 
 # Import classes
-import skin_detection_runfile
+# import skin_detection_runefile as skin_driver
+from skin_detection_runefile import MultipleVideoDriver
 from rPPGNet import *
 from helper_functions import helper_functions
 
@@ -21,10 +22,11 @@ from helper_functions import helper_functions
 
 
 class CustomDataset(Dataset):
-    def __init__(self, root_dir, json_file, frames = 64):  # Adjust the resolution as needed
+    def __init__(self, root_dir, json_file, frames = 64):  # Adjust the number of frames depending on memory on GPUs
         self.root_dir = root_dir
         self.frames  = frames
         self.data = self.load_data(json_file)
+        self._class = "[Custom dataset]"
     
     def load_data(self, json_file):
         with open(json_file) as file:
@@ -35,8 +37,8 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def load_video_frames(self, video_path, bb_data):
-        print("Converting")
-        mask_array, frame_array = skin_detection_runfile.convert_video_with_progress(video_path, bb_data, frames = self.frames + 1)
+        print(f"{self._class} Converting")
+        mask_array, frame_array = MultipleVideoDriver.convert_video_with_progress(video_path, bb_data, frames = self.frames + 1)
         mask_array = helper_functions.binary_mask(mask_array)
         return mask_array, frame_array
     
@@ -93,7 +95,7 @@ if __name__ == "__main__":
 
     # Iterate through the DataLoader to access your data
     for i, (skin_seg_label, frame_tensor, ecg_tensor) in enumerate(data_loader):
-        print(f"Batch {i}, skin_seg_label: {skin_seg_label}")
-        print(f"Batch {i}, Video Tensor Shape: {frame_tensor.shape}")
-        print(f"Batch {i}, ECG Tensor Shape: {ecg_tensor.shape}")
+        print(f"{custom_dataset._class} Batch {i}, skin_seg_label: {skin_seg_label}")
+        print(f"{custom_dataset._class} Batch {i}, Video Tensor Shape: {frame_tensor.shape}")
+        print(f"{custom_dataset._class} Batch {i}, ECG Tensor Shape: {ecg_tensor.shape}")
         # Your training code here
