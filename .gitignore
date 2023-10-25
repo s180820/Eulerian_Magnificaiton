@@ -33,6 +33,8 @@ __pycache__/
 # C extensions
 *.so
 
+.nfs*
+
 # Distribution / packaging
 .Python
 build/

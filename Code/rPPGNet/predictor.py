@@ -71,6 +71,7 @@ class Predictor:
         self.dev_mode = False
         self.wandb_run = None
         self.test_images = []
+        self._class = "[Predictor]"
 
         # set model
         # print(f"Setting model to {model}")
@@ -87,17 +88,17 @@ class Predictor:
         
     
     def load_model(self, path, model_name = "model.pth"):
-        print(f"Loading model from {path}")
+        print(f"{self._class} Loading model from {path}")
         if path.startswith("wandb:"):
             dl_path = "logs/Eulerian_Magnification/models/latest_from_wandb"
             path = path[6:]
-            print(f"Downloading model from wandb: {path}")
+            print(f"{self._class} Downloading model from wandb: {path}")
             path = download_model(path, dl_path)
         
         self.model.load_state_dict(torch.load(path+"/"+model_name, map_location=torch.device(self.device)))           
         
     def set_model(self, model):
-        print(f"Setting model to {model}")
+        print(f"{self._class} Setting model to {model}")
         
         transfer_learning = model.lower() in ["resnet18"]
         # if model.lower() == "resnet18":
@@ -238,7 +239,7 @@ class Predictor:
         # prepare training
         num_epochs = self.config.get("num_epochs") if num_epochs is None else num_epochs
         self.prepare(cuda_device)
-        print(f"Starting training on {self.device.type}")
+        print(f"{self._class} Starting training on {self.device.type}")
 
         for epoch in tqdm(range(num_epochs), unit='epoch'):
             
@@ -279,7 +280,7 @@ class Predictor:
             ecg_aux_loss /= len(self.train_loader)
             
             if self.verbose:
-                print("Train Loss: {train:.1f}%".format(train=train_loss))
+                print(f"{self._class} Train Loss: {train_loss:.1f}%")
             
             # test 
             test_loss, test_loss_binary, test_loss_ecg, test_loss_ecg1, test_loss_ecg2, test_loss_ecg3, test_loss_ecg4, test_loss_ecg_aux = self.test(validation=True)
@@ -339,7 +340,7 @@ class Predictor:
             data_loader = self.test_loader
         data_len = len(data_loader.dataset)
         
-        print("Performing test with {} videos".format(data_len))
+        print(f"{self._class} Performing test with {data_len} images")
         
         # Init counters
         test_loss = 0
