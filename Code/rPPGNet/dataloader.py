@@ -1,4 +1,4 @@
-
+# Import packages
 import numpy as np
 import os
 import sys
@@ -8,13 +8,17 @@ import torch
 import json
 from scipy import signal
 
+# Add extra files that we need to use
 sys.path.append('Code/Skin_segmentation')
-sys.path.append('models')
+sys.path.append('Models')
 
+# Import classes
 import skin_detection_runfile
 from rPPGNet import *
-
 from helper_functions import helper_functions
+
+
+
 
 class CustomDataset(Dataset):
     def __init__(self, root_dir, json_file, frames = 64):  # Adjust the resolution as needed
@@ -41,11 +45,8 @@ class CustomDataset(Dataset):
         ecg = pd.read_csv(ecg_path)
         ecg = helper_functions.smooth_ecg(ecg, idx)
         return ecg
-    
-    def __getitem__(self, idx):
-        folder = list(self.data.keys())[idx]  # Access the folder at the given index
-        sub_folder = list(self.data[folder].keys())[0]  # Access the first sub-folder
 
+    def getpaths(self, folder, sub_folder):
         video_path = os.path.join(self.root_dir, folder, sub_folder, self.data[folder][sub_folder]["video_1"])
         ecg_path = os.path.join(self.root_dir, folder, sub_folder, self.data[folder][sub_folder]["csv_1"])
         index_path = os.path.join(self.root_dir, folder, sub_folder, self.data[folder][sub_folder]["csv_2"])
@@ -54,6 +55,15 @@ class CustomDataset(Dataset):
 
         if "c920-1" not in video_path:
             video_path = os.path.join(self.root_dir, folder, sub_folder, self.data[folder][sub_folder]["video_2"])
+
+        return video_path, ecg_path, index_path, bb_file, bb_data
+
+    
+    def __getitem__(self, idx):
+        folder = list(self.data.keys())[idx]  # Access the folder at the given index
+        sub_folder = list(self.data[folder].keys())[0]  # Access the first sub-folder
+
+        video_path, ecg_path, index_path, bb_file, bb_data = self.getpaths(folder, sub_folder)
 
         mask_array, frame_array,  = self.load_video_frames(video_path, bb_data)
         ecg = self.load_ecg_data(ecg_path, index_path)

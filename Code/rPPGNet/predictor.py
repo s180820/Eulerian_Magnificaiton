@@ -3,7 +3,7 @@ from torch.nn import functional as F
 import torchvision
 from tqdm import tqdm
 import os
-from hparams import wandb_defaults, default_config
+from _config import wandb_defaults, default_config
 from dataloader import CustomDataset
 import wandb
 import numpy as np
