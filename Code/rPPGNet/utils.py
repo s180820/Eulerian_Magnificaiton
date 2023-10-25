@@ -1,3 +1,6 @@
+import wandb
+import torch.optim as optim
+
 def download_model(full_name:str, download_path:str = None):
     """
     Downloads the agent from wandb.
@@ -19,3 +22,7 @@ def download_model(full_name:str, download_path:str = None):
     path = artifact.download(download_path) # download artifact
  
     return path 
+
+class ReduceLROnPlateau(optim.lr_scheduler.ReduceLROnPlateau):
+    def get_last_lr(self):
+        return self._last_lr

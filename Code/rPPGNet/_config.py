@@ -16,6 +16,7 @@ default_config = {
 	"optimizer" : "Adam",
 	"loss_fun" : "rPPGnet",
 	"num_epochs" : 25,
+    "use_scheduler" :True,
 	### model params
 	"dropout": 0.5,
 	"batchnorm": False,

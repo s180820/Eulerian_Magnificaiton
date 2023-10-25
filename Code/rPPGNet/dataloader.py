@@ -21,15 +21,13 @@ from helper_functions import helper_functions
 
 
 class CustomDataset(Dataset):
-    def __init__(self, root_dir, json_file, frames = 64, train=True):  # Adjust the resolution as needed
+    def __init__(self, root_dir, json_file, frames = 64, purpose="train"):  # Adjust the resolution as needed
         self.root_dir = root_dir
         self.frames  = frames
         self.data = self.load_data(json_file)
-        self.train = train
-
-        if self.train:
-            self.train_subset, self.val_subset = torch.utils.data.random_split(
-        self, [0.8, 0.2], generator=torch.Generator().manual_seed(1))
+        self.purpose = purpose
+        self.train_subset, self.test_subset, self.val_subset = torch.utils.data.random_split(
+        self, [0.7, 0.2, 0.1], generator=torch.Generator().manual_seed(1))
     
     def load_data(self, json_file):
         with open(json_file) as file:
@@ -48,7 +46,7 @@ class CustomDataset(Dataset):
     def load_ecg_data(self, ecg_path, index_path):
         idx = pd.read_csv(index_path, header = None, names = ["timestamp", "idx_sig"])
         ecg = pd.read_csv(ecg_path)
-        ecg = helper_functions.smooth_ecg(ecg, idx, self.train)
+        ecg = helper_functions.smooth_ecg(ecg, idx, self.purpose)
         return ecg
 
     def getpaths(self, folder, sub_folder):
@@ -73,7 +71,7 @@ class CustomDataset(Dataset):
         mask_array, frame_array,  = self.load_video_frames(video_path, bb_data)
         ecg = self.load_ecg_data(ecg_path, index_path)
 
-        skin_seg_label, frame_tensor, ecg_tensor = helper_functions.tensor_transform(mask_array, frame_array, ecg, self.frames)
+        skin_seg_label, frame_tensor, ecg_tensor = helper_functions.tensor_transform(mask_array, frame_array, ecg, self.frames, self.purpose)
         
         assert frame_tensor.shape[1] == self.frames
         assert ecg_tensor.shape[0] == self.frames
@@ -81,12 +79,14 @@ class CustomDataset(Dataset):
         return skin_seg_label, frame_tensor, ecg_tensor
     
     def get_dataloader(self, batch_size = 1, *args, **kwargs):
-        #if self.train:
-         #   train_loader = DataLoader(dataset=self.train_subset, shuffle=True, batch_size=batch_size, *args, **kwargs)
-          #  val_loader = DataLoader(dataset=self.val_subset, shuffle=False, batch_size=batch_size, *args, **kwargs)
-           # return train_loader, val_loader
+        if self.purpose == "train":
+            return DataLoader(dataset=self.train_subset, shuffle=True, batch_size=batch_size, *args, **kwargs)
+        if self.purpose == "test":
+            return DataLoader(dataset=self.test_subset, shuffle=False, batch_size=batch_size, *args, **kwargs)
+        if self.purpose == "val":
+            return DataLoader(dataset=self.val_subset, shuffle=False, batch_size=batch_size, *args, **kwargs)
         #else:
-        return DataLoader(self, batch_size=batch_size, shuffle=False, *args, **kwargs)
+            #return DataLoader(self, batch_size=batch_size, shuffle=False, *args, **kwargs)
     
 if __name__ == "__main__":
     # Define your data and DataLoader
