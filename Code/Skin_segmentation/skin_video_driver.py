@@ -33,6 +33,12 @@ class MultipleVideoDriver():
         # Set starting frame
         video.set(cv2.CAP_PROP_POS_FRAMES, starting_frame)
 
+        cv2_total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+        # Get total amount of frames
+        if cv2_total_frames < frames_to_process:
+            print(f"{MultipleVideoDriver._class} Requested frames are longer than the video - Setting max frames to vid size. ")
+            frames_to_process = cv2_total_frames
+
         # Video capture flag.
         if output_file is not None: 
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -140,8 +146,8 @@ if __name__ == "__main__":
 
     # Usage
     mask_array, frame_array = MultipleVideoDriver.convert_video_with_progress(video_file = video_file, data = data, output_file = output_file, 
-                                                                              frames_to_process=900,
-                                                                              starting_frame=1, verbosity=False)
+                                                                              frames_to_process=50000,
+                                                                              starting_frame=1, verbosity=True)
 
     # Convert and save tensors
-    MultipleVideoDriver.convert_and_save_tensors(mask_array, frame_array, output_dir = output_dir, saveTensors=False)
+    MultipleVideoDriver.convert_and_save_tensors(mask_array, frame_array, output_dir = output_dir, saveTensors=True)
