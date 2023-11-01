@@ -61,11 +61,12 @@ class helper_functions:
             return video_paths, ecg_paths, idx_paths, bb_data_paths
       
       def smooth_ecg(ecg, idx):
-            ecg[" ECG"] = helper_functions.detrend_ecg(ecg[" ECG"]) #detrend the signal
-            ecg = ecg.groupby(by="milliseconds", as_index=False).mean() #group all recorded signals together
-            ecg["ECG_norm"] = (ecg[" ECG"] - ecg[" ECG"].mean()) / ecg[" ECG"].std() #Normalise
-            ecg["ECG_MV"] = helper_functions.moving_average(ecg["ECG_norm"], 3) #moving average
-            ecg = ecg.iloc[int(idx.iloc[0].idx_sig/3):] # start at the first frame of video
+            #ecg[" ECG"] = helper_functions.detrend_ecg(ecg[" ECG HR"]) #detrend the signal
+            
+            #ecg["ECG_norm"] = (ecg[" ECG"] - ecg[" ECG"].mean()) / ecg[" ECG"].std() #Normalise
+            ecg["ECG_norm"] = (ecg[" ECG"] - np.min(ecg[" ECG"] )) / (np.max(ecg[" ECG"] ) - np.min(ecg[" ECG"] ))
+            ecg["ECG_MV"] = helper_functions.moving_average(ecg["ECG_norm"], 5) #moving average
+            ecg = ecg.iloc[int(idx.iloc[0].idx_sig/5):] # start at the first frame of video
             return ecg
       
       def detrend_ecg(ecg_signal, smoothing_parameter=300):

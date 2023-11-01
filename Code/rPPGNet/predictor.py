@@ -263,13 +263,13 @@ class Predictor:
                 loss_binary, loss_ecg, loss_ecg1, loss_ecg2, loss_ecg3, loss_ecg4, loss_ecg_aux, loss = self.train_step(data, target, target_skin)
                 count += 1
                 train_loss += loss.item()
-                binary_loss += loss_binary
-                ecg_total_loss += loss_ecg
-                ecg1_loss += loss_ecg1
-                ecg2_loss += loss_ecg2
-                ecg3_loss += loss_ecg3
-                ecg4_loss += loss_ecg4
-                ecg_aux_loss += loss_ecg_aux
+                binary_loss += loss_binary.item()
+                ecg_total_loss += loss_ecg.item()
+                ecg1_loss += loss_ecg1.item()
+                ecg2_loss += loss_ecg2.item()
+                ecg3_loss += loss_ecg3.item()
+                ecg4_loss += loss_ecg4.item()
+                ecg_aux_loss += loss_ecg_aux.item()
 
                 print("Train loss: ", train_loss/(minibatch_no+1))
                 # break if dev mode
