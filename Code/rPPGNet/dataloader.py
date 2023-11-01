@@ -28,6 +28,7 @@ class CustomDataset(Dataset):
         self.root_dir = root_dir
         self.frames = frames
         self.video_paths, self.ecg_paths, self.idx_paths, self.bb_paths = self.load_data()
+        self.videoDriver = MultipleVideoDriver()
         #self.data = pd.DataFrame(data={"videos": self.video_paths, 
          #                                   "ecg" : self.ecg_paths, 
           #                                  "idx" :self.idx_paths, 
@@ -54,7 +55,7 @@ class CustomDataset(Dataset):
 
         #output_dir = '/zhome/01/d/127159/Desktop/Eulerian_Magnificaiton/output_dir/Skin_segmentation/'
         #output_file = os.path.join(output_dir, str(self.videoECG_counter) +".mp4")
-        mask_array, frame_array = MultipleVideoDriver.convert_video_with_progress(video_file = video_path, data = bb_data,
+        mask_array, frame_array = self.videoDriver.convert_video_with_progress(video_file = video_path, data = bb_data,
                                                                               frames_to_process=self.frames + 1,
                                                                               starting_frame=cur_frame_idx, verbosity=False)
         mask_array = helper_functions.binary_mask(mask_array)
@@ -140,6 +141,7 @@ class CustomDataset_OLD(Dataset):
         self.frames  = frames
         self.data = self.load_data(json_file)
         self.train = train
+        self.videoDriver = MultipleVideoDriver()
 
         if self.train:
             self.train_subset, self.val_subset = torch.utils.data.random_split(
@@ -155,7 +157,7 @@ class CustomDataset_OLD(Dataset):
 
     def load_video_frames(self, video_path, bb_data):
         print("Converting")
-        mask_array, frame_array = MultipleVideoDriver.convert_video_with_progress(video_file = video_path, data = bb_data,
+        mask_array, frame_array = self.videoDriver.convert_video_with_progress(video_file = video_path, data = bb_data,
                                                                               frames_to_process=self.frames + 1,
                                                                               starting_frame=1, verbosity=False)
         mask_array = helper_functions.binary_mask(mask_array)
