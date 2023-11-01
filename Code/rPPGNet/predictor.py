@@ -4,7 +4,7 @@ import torchvision
 from tqdm import tqdm
 import os
 from _config import wandb_defaults, default_config
-from dataloader import CustomDataset
+from dataloader import CustomDataset, CustomDataset_OLD
 import wandb
 from utils import download_model, ReduceLROnPlateau
 
@@ -70,7 +70,6 @@ class Predictor:
         self.config.update(kwargs)
         self.dev_mode = False
         self.wandb_run = None
-        self.test_images = []
         self._class = "[Predictor]"
 
         # set model
@@ -126,6 +125,8 @@ class Predictor:
         self.test_loader = self.data_test.get_dataloader(**self.config.get("train_dataloader_kwargs", {}))
         self.val_loader = self.data_val.get_dataloader(**self.config.get("train_dataloader_kwargs", {}))
 
+        #self.train_loader, self.val_loader = self.data_train.get_dataloader(**self.config.get("train_dataloader_kwargs", {}))
+
     def set_optimizer(self):
         optimizer = self.config.get("optimizer")
         
@@ -135,7 +136,7 @@ class Predictor:
             
         # set optimizer
         #self.optimizer = torch.optim.__dict__.get(optimizer)(self.model.parameters(), **self.config.get("optimizer_kwargs", {}))
-        self.optimizer = torch.optim.__dict__.get(optimizer)(self.model.parameters(), )
+        self.optimizer = torch.optim.__dict__.get(optimizer)(self.model.parameters(),)
         
         
         
@@ -196,7 +197,7 @@ class Predictor:
         self.set_optimizer()
         
         # set best acc
-        self.best_test_loss = 2
+        self.best_test_loss = 3
 
 
     def train_step(self, data, target, target_skin):
@@ -251,11 +252,16 @@ class Predictor:
             ecg3_loss = 0
             ecg4_loss = 0
             ecg_aux_loss = 0
+
             self.model.train()
+            count = 0
             pbar = tqdm(enumerate(self.train_loader), total=len(self.train_loader))
+            #pbar = tqdm(enumerate(self.train_loader), total=int(1969/85))
             for minibatch_no, (target_skin, data, target) in pbar:
+                if target.shape[1] != 64:
+                    break
                 loss_binary, loss_ecg, loss_ecg1, loss_ecg2, loss_ecg3, loss_ecg4, loss_ecg_aux, loss = self.train_step(data, target, target_skin)
-                
+                count += 1
                 train_loss += loss.item()
                 binary_loss += loss_binary
                 ecg_total_loss += loss_ecg
@@ -265,22 +271,31 @@ class Predictor:
                 ecg4_loss += loss_ecg4
                 ecg_aux_loss += loss_ecg_aux
 
+                print("Train loss: ", train_loss/(minibatch_no+1))
                 # break if dev mode
                 if self.dev_mode:
                     break
 
             #Comput the train accuracy
-            train_loss /= len(self.train_loader)
-            binary_loss /= len(self.train_loader)
-            ecg_total_loss /= len(self.train_loader)
-            ecg1_loss /= len(self.train_loader)
-            ecg2_loss /= len(self.train_loader)
-            ecg3_loss /= len(self.train_loader)
-            ecg4_loss /= len(self.train_loader)
-            ecg_aux_loss /= len(self.train_loader)
+            train_loss /= count
+            binary_loss /= count
+            ecg_total_loss /= count
+            ecg1_loss /= count
+            ecg2_loss /= count
+            ecg3_loss /= count
+            ecg4_loss /= count
+            ecg_aux_loss /= count
+            #train_loss /= len(self.train_loader)
+            #binary_loss /= len(self.train_loader)
+            #ecg_total_loss /= len(self.train_loader)
+            #ecg1_loss /= len(self.train_loader)
+            #ecg2_loss /= len(self.train_loader)
+            #ecg3_loss /= len(self.train_loader)
+            #ecg4_loss /= len(self.train_loader)
+            #ecg_aux_loss /= len(self.train_loader)
             
             if self.verbose:
-                print(f"{self._class} Train Loss: {train_loss:.1f}%")
+                print(f"{self._class} Train Loss: {train_loss:.3f}")
             
             # test 
             test_loss, test_loss_binary, test_loss_ecg, test_loss_ecg1, test_loss_ecg2, test_loss_ecg3, test_loss_ecg4, test_loss_ecg_aux = self.test(validation=True)
@@ -340,8 +355,6 @@ class Predictor:
             data_loader = self.test_loader
         data_len = len(data_loader.dataset)
         
-        print(f"{self._class} Performing test with {data_len} images")
-        
         # Init counters
         test_loss = 0
         test_loss_binary = 0
@@ -354,10 +367,14 @@ class Predictor:
         
         # Test the model
         self.model.eval()
+        count = 0
         for target_skin, data, target in data_loader:
             data = data.to(self.device)
             target_skin = target_skin.to(self.device)
             target = target.to(self.device)
+            if target.shape[1] != 64:
+                break
+            count += 1
             with torch.no_grad():
                 skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = self.model(data)
             
@@ -370,29 +387,46 @@ class Predictor:
             rPPG_SA4 = (rPPG_SA4-torch.mean(rPPG_SA4)) /torch.std(rPPG_SA4)	 	# normalize2
             rPPG_aux = (rPPG_aux-torch.mean(rPPG_aux)) /torch.std(rPPG_aux)	 	# normalize2
 
-            test_loss_binary += self.loss_fun_skin(skin_map, target_skin) 
-            test_loss_ecg += self.loss_fun(rPPG, target)
-            test_loss_ecg1 += self.loss_fun(rPPG_SA1, target)
-            test_loss_ecg2 += self.loss_fun(rPPG_SA2, target)
-            test_loss_ecg3 += self.loss_fun(rPPG_SA3, target)
-            test_loss_ecg4 += self.loss_fun(rPPG_SA4, target)
-            test_loss_ecg_aux += self.loss_fun(rPPG_aux, target)
+            tlb = self.loss_fun_skin(skin_map, target_skin) 
+            tle = self.loss_fun(rPPG, target)
+            tle1 = self.loss_fun(rPPG_SA1, target)
+            tle2 = self.loss_fun(rPPG_SA2, target)
+            tle3 = self.loss_fun(rPPG_SA3, target)
+            tle4 = self.loss_fun(rPPG_SA4, target)
+            tlea = self.loss_fun(rPPG_aux, target)
 
-            test_loss += 0.1*test_loss_binary + 0.5*(test_loss_ecg1 + test_loss_ecg2 + test_loss_ecg3 + test_loss_ecg4 + test_loss_ecg_aux) + test_loss_ecg
+            test_loss_binary += tlb
+            test_loss_ecg += tle
+            test_loss_ecg1 += tle1
+            test_loss_ecg2 += tle2
+            test_loss_ecg3 += tle3
+            test_loss_ecg4 += tle4
+            test_loss_ecg_aux += tlea
+
+            test_loss += 0.1*tlb + 0.5*(tle1 + tle2 + tle3 + tle4 + tlea) + tle
+            print(test_loss.item()/count)
             
 
         # compute stats
-        test_loss /= len(data_loader)
-        test_loss_binary /= len(data_loader)
-        test_loss_ecg /= len(data_loader)
-        test_loss_ecg1 /= len(data_loader)
-        test_loss_ecg2 /= len(data_loader)
-        test_loss_ecg3 /= len(data_loader)
-        test_loss_ecg4 /= len(data_loader)
-        test_loss_ecg_aux /= len(data_loader)
+        #test_loss /= len(data_loader)
+        #test_loss_binary /= len(data_loader)
+        #test_loss_ecg /= len(data_loader)
+        #test_loss_ecg1 /= len(data_loader)
+        #test_loss_ecg2 /= len(data_loader)
+        #test_loss_ecg3 /= len(data_loader)
+        #test_loss_ecg4 /= len(data_loader)
+        #test_loss_ecg_aux /= len(data_loader)
+        test_loss /= count
+        test_loss_binary /= count
+        test_loss_ecg /= count
+        test_loss_ecg1 /= count
+        test_loss_ecg2 /= count
+        test_loss_ecg3 /= count
+        test_loss_ecg4 /= count
+        test_loss_ecg_aux /= count
 
         if self.verbose:
-            print("Loss test: {test:.1f}%".format(test=test_loss))
+            print("Loss test: {test:.3f}".format(test=test_loss))
 
 
         return test_loss, test_loss_binary, test_loss_ecg, test_loss_ecg1, test_loss_ecg2, test_loss_ecg3, test_loss_ecg4, test_loss_ecg_aux

@@ -61,29 +61,32 @@ class helper_functions:
             return video_paths, ecg_paths, idx_paths, bb_data_paths
       
       def smooth_ecg(ecg, idx):
-            ecg[" ECG"] = signal.detrend(ecg[" ECG HR"])
-            ecg["ECG_norm"] = ecg[" ECG"] - ecg[" ECG"].mean() / ecg[" ECG"].std() # Normalize
-            ecg = ecg.iloc[::5,:]
-            #print("ECG LEN: ", len(ecg))
-            ecg["ECG_MV"] = helper_functions.moving_average(ecg["ECG_norm"], 5)
-            #print("ECG LEN MA: ", len(ecg))
-            ecg = ecg.iloc[int(idx.iloc[0].idx_sig/5):]
-            #print("ECG LEN IDX ILOC: ", len(ecg))
+            ecg[" ECG"] = helper_functions.detrend_ecg(ecg[" ECG"]) #detrend the signal
+            ecg = ecg.groupby(by="milliseconds", as_index=False).mean() #group all recorded signals together
+            ecg["ECG_norm"] = (ecg[" ECG"] - ecg[" ECG"].mean()) / ecg[" ECG"].std() #Normalise
+            ecg["ECG_MV"] = helper_functions.moving_average(ecg["ECG_norm"], 3) #moving average
+            ecg = ecg.iloc[int(idx.iloc[0].idx_sig/3):] # start at the first frame of video
             return ecg
+      
+      def detrend_ecg(ecg_signal, smoothing_parameter=300):
+            return np.convolve(ecg_signal, np.ones(smoothing_parameter) / smoothing_parameter, mode='same')
       
       def binary_mask(mask_array):
             mask_array = np.clip(mask_array[1:], 0, 1)
             return mask_array
+      
       def get_video_frame_count(video_path):
             cap = cv2.VideoCapture(video_path)
             frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             cap.release()
             return frame_count
+      
       def get_total_frame_count(video_paths):
             total_frames = 0
             for video_path in video_paths:
                   total_frames += helper_functions.get_video_frame_count(video_path)
             return total_frames
+      
       def tensor_transform(mask_array, frame_array, ecg, frames):
             """
                   Function to transform to tensor. 

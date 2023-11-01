@@ -23,10 +23,12 @@ default_config = {
 	"finetune": False,
 	# kwargs
 	"optimizer_kwargs" : {},
-	"train_dataset_kwargs" : {"json_file" :'Data/json_structure',
+	"train_dataset_kwargs" : {#"json_file" :'Data/json_structure',
                               "root_dir": "/work3/s174159/data/",
-                              "frames": 64},
-	"test_dataset_kwargs" : {"json_file" :'Data/json_structure',
+                              "frames": 64,
+                              "verbosity": True
+							  },
+	"test_dataset_kwargs" : {#"json_file" :'Data/json_structure',
                               "root_dir": "/work3/s174159/data/",
                               "frames": 64},
 	"train_dataloader_kwargs" : {},
