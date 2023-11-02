@@ -209,14 +209,24 @@ class Predictor:
 
         #Forward pass your image through the network
         skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = self.model(data)
-        rPPG = (rPPG-torch.mean(rPPG)) /torch.std(rPPG)	 	# normalize2
-        rPPG_SA1 = (rPPG_SA1-torch.mean(rPPG_SA1)) /torch.std(rPPG_SA1)	 	# normalize2
-        rPPG_SA2 = (rPPG_SA2-torch.mean(rPPG_SA2)) /torch.std(rPPG_SA2)	 	# normalize2
-        rPPG_SA3 = (rPPG_SA3-torch.mean(rPPG_SA3)) /torch.std(rPPG_SA3)	 	# normalize2
-        rPPG_SA4 = (rPPG_SA4-torch.mean(rPPG_SA4)) /torch.std(rPPG_SA4)	 	# normalize2
-        rPPG_aux = (rPPG_aux-torch.mean(rPPG_aux)) /torch.std(rPPG_aux)	 	# normalize2
+
+        #rPPG = (rPPG-torch.mean(rPPG)) /torch.std(rPPG)	 	# normalize2
+        #rPPG_SA1 = (rPPG_SA1-torch.mean(rPPG_SA1)) /torch.std(rPPG_SA1)	 	# normalize2
+        #rPPG_SA2 = (rPPG_SA2-torch.mean(rPPG_SA2)) /torch.std(rPPG_SA2)	 	# normalize2
+        #rPPG_SA3 = (rPPG_SA3-torch.mean(rPPG_SA3)) /torch.std(rPPG_SA3)	 	# normalize2
+        #rPPG_SA4 = (rPPG_SA4-torch.mean(rPPG_SA4)) /torch.std(rPPG_SA4)	 	# normalize2
+        #rPPG_aux = (rPPG_aux-torch.mean(rPPG_aux)) /torch.std(rPPG_aux)	 	# normalize2
+
+        rPPG = (rPPG-torch.min(rPPG)) / (torch.max(rPPG) -torch.min(rPPG)) 	# normalize2
+        rPPG_SA1 = (rPPG_SA1-torch.min(rPPG_SA1)) / (torch.max(rPPG_SA1) -torch.min(rPPG_SA1))	 	# normalize2
+        rPPG_SA2 = (rPPG_SA2-torch.min(rPPG_SA2)) / (torch.max(rPPG_SA2) -torch.min(rPPG_SA2))	 	# normalize2
+        rPPG_SA3 = (rPPG_SA3-torch.min(rPPG_SA3)) / (torch.max(rPPG_SA3) -torch.min(rPPG_SA3))	 	# normalize2
+        rPPG_SA4 = (rPPG_SA4-torch.min(rPPG_SA4)) / (torch.max(rPPG_SA4) -torch.min(rPPG_SA4))	 	# normalize2
+        rPPG_aux = (rPPG_aux-torch.min(rPPG_aux)) / (torch.max(rPPG_aux) -torch.min(rPPG_aux))
 
         #Compute the loss
+        print(rPPG)
+        print(target)
         loss_binary = self.loss_fun_skin(skin_map, target_skin) 
         loss_ecg = self.loss_fun(rPPG, target)
         loss_ecg1 = self.loss_fun(rPPG_SA1, target)
@@ -450,7 +460,7 @@ class Predictor:
 
 
 if __name__ == "__main__":
-    predictor = Predictor(project="Eulerian_mag", model = "rPPGNet", use_wandb=True, optimizer = "Adam",)
+    predictor = Predictor(project="Eulerian_mag", model = "rPPGNet", use_wandb=False, optimizer = "Adam",)
     # classifier.dev_mode = True
     predictor.train(num_epochs=50)
     # classifier.sweep()
