@@ -6,6 +6,7 @@ import cv2
 import json
 import os
 import scipy.fftpack as fftpack
+from scipy.signal import butter, lfilter
 
 class helper_functions: 
       def moving_average(series, window_size=5):
@@ -61,6 +62,14 @@ class helper_functions:
                               continue
             return video_paths, ecg_paths, idx_paths, bb_data_paths
       
+      def bandpass_filter(data, lowcut = 0.05, highcut = 100.0, fs = 500, order=2):
+            nyquist = 0.5 * fs
+            low = lowcut / nyquist
+            high = highcut / nyquist
+            b, a = butter(order, [low, high], btype="band")
+            y = lfilter(b, a, data)
+            return y
+      
       def smooth_ecg(ecg, idx):
             #ecg[" ECG"] = helper_functions.detrend_ecg(ecg[" ECG HR"]) #detrend the signal
             lead_names = ["Lead I", "Lead II", "Lead III", "Lead aVR", "Lead aVL"]
@@ -69,8 +78,9 @@ class helper_functions:
             ecg = ecg.loc[idx.iloc[0].idx_sig:idx.iloc[-1].idx_sig+1]
             #print(ecg)
             true_ecg = ecg[ecg["Lead"] == "Lead II"][" ECG"].reset_index(drop=True) - ecg[ecg["Lead"] == "Lead I"][" ECG"].reset_index(drop=True)
-            ecg_norm = (true_ecg - np.mean(true_ecg)) / np.std(true_ecg)
-            ecg_mv = helper_functions.moving_average(ecg_norm, 3) #moving average
+            ecg_norm = (true_ecg - np.mean(true_ecg)) / np.std(true_ecg) # GUSTAV 
+            #ecg_mv = helper_functions.moving_average(ecg_norm, 3) #moving average # GUSSE
+            ecg_mv = helper_functions.bandpass_filter(ecg_norm)
              # start at the first frame of video
             return ecg_mv
       
