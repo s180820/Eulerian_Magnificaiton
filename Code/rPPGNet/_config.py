@@ -22,7 +22,7 @@ default_config = {
 	"batchnorm": False,
 	"finetune": False,
 	# kwargs
-	"optimizer_kwargs" : {"lr": 0.01},
+	"optimizer_kwargs" : {"lr": 0.0001},
 	"train_dataset_kwargs" : {#"json_file" :'Data/json_structure',
                               "root_dir": "/work3/s174159/data/",
                               "frames": 300,

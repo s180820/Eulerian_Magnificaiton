@@ -24,6 +24,7 @@ class helper_functions:
             final_list = moving_averages_list
 
             return final_list
+      
       def check_files_exist(file_path1, file_path2, file_path3, file_path4):
             if os.path.exists(file_path1) and os.path.exists(file_path2) and os.path.exists(file_path3) and os.path.exists(file_path4):
                   return True
