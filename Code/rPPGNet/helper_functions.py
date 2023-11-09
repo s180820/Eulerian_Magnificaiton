@@ -5,7 +5,7 @@ import torch
 import cv2
 import json
 import os
-
+import scipy.fftpack as fftpack
 
 class helper_functions: 
       def moving_average(series, window_size=5):
@@ -65,13 +65,28 @@ class helper_functions:
             lead_names = ["Lead I", "Lead II", "Lead III", "Lead aVR", "Lead aVL"]
             ecg["Lead"] = lead_names * (len(ecg) // 5)
             ecg["time"] = (ecg["milliseconds"] - ecg["milliseconds"].min()) / 1000  # Convert time.
-            ecg = ecg[ecg["Lead"] == "Lead II"]
-            #ecg["ECG_norm"] = (ecg[" ECG"] - ecg[" ECG"].mean()) / ecg[" ECG"].std() #Normalise
-            ecg["ECG_norm"] = (ecg[" ECG"] - np.min(ecg[" ECG"] )) / (np.max(ecg[" ECG"] ) - np.min(ecg[" ECG"] ))
-            ecg["ECG_MV"] = helper_functions.moving_average(ecg["ECG_norm"], 2) #moving average
-            ecg = ecg.loc[idx.iloc[0].idx_sig+1:idx.iloc[-1].idx_sig+1] # start at the first frame of video
-            return ecg
+            ecg = ecg.loc[idx.iloc[0].idx_sig:idx.iloc[-1].idx_sig+1]
+            #print(ecg)
+            true_ecg = ecg[ecg["Lead"] == "Lead II"][" ECG"].reset_index(drop=True) - ecg[ecg["Lead"] == "Lead I"][" ECG"].reset_index(drop=True)
+            ecg_norm = (true_ecg - np.mean(true_ecg)) / np.std(true_ecg)
+            ecg_mv = helper_functions.moving_average(ecg_norm, 3) #moving average
+             # start at the first frame of video
+            return ecg_mv
       
+      def fft_filter(video, freq_min, freq_max, fps):
+            fft = fftpack.fft(video, axis=0)
+            frequencies = fftpack.fftfreq(video.shape[0], d=1.0 / fps)
+            bound_low = (np.abs(frequencies - freq_min)).argmin()
+            bound_high = (np.abs(frequencies - freq_max)).argmin()
+            fft[:bound_low] = 0
+            fft[bound_high:-bound_high] = 0
+            fft[-bound_low:] = 0
+            iff = fftpack.ifft(fft, axis=0)
+            result = np.abs(iff)
+            result *= 100  # Amplification factor
+
+            return result, fft, frequencies
+
       def detrend_ecg(ecg_signal, smoothing_parameter=300):
             return np.convolve(ecg_signal, np.ones(smoothing_parameter) / smoothing_parameter, mode='same')
       
@@ -101,9 +116,11 @@ class helper_functions:
             frame_tensor = torch.swapaxes(frame_tensor, 0, 3)
             frame_tensor = torch.swapaxes(frame_tensor, 1, 2)
             frame_tensor = torch.swapaxes(frame_tensor, 1, 3)
+            # frame_tensor = torch.swapaxes(frame_tensor, 2, 3)
+            # frame_tensor = torch.swapaxes(frame_tensor, 0, 1)
             #if purpose == "val":
               #    ecg = ecg[1:frames+1].values
             #else:
-            ecg = ecg["ECG_MV"][1:frames+1].values #only choose moving average and the amount of frames
+            ecg = np.abs(ecg[1:frames+1]) #only choose moving average and the amount of frames
             ecg = torch.tensor(np.array(ecg))
             return skin_seg_label, frame_tensor, ecg

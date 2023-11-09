@@ -91,7 +91,7 @@ class MixA_Module(nn.Module):
 # for open-source
 # skin segmentation + PhysNet + MixA3232 + MixA1616part4
 class rPPGNet(nn.Module):
-    def __init__(self, frames=64):  
+    def __init__(self, frames=300):  
         super(rPPGNet, self).__init__()
         
         self.ConvSpa1 = nn.Sequential(

@@ -7,14 +7,19 @@ from _config import wandb_defaults, default_config
 from dataloader import CustomDataset, CustomDataset_OLD
 import wandb
 from utils import download_model, ReduceLROnPlateau
-
+import scipy
+import numpy as np
+from helper_functions import helper_functions
+import heartpy as hp
 from models import models
 from loss_functions import Neg_Pearson
+from scipy.signal import butter, lfilter
+import matplotlib.pyplot as plt
 
 from datetime import datetime as dt
 
 class Predictor:
-    def __init__(self, project = "Eulerian_Magnification", name = None, model = None, config = None, use_wandb = True, verbose = True, model_save_freq = None, **kwargs):
+    def __init__(self, project = "Eulerian_Magnification", name = None, model = None, ex_model = None, est_model = None, frames = 64, config = None, use_wandb = True, verbose = True, model_save_freq = None, **kwargs):
         """
         Class for training and testing rPPG predicton from fases
 
@@ -64,6 +69,8 @@ class Predictor:
         self.verbose = verbose
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model_save_freq = model_save_freq
+        self.frames = frames
+        self.loss_version = "org"
 
         # set init values
         self.config = config if config is not None else default_config
@@ -75,7 +82,9 @@ class Predictor:
         # set model
         # print(f"Setting model to {model}")
         self.set_model("rPPGnet" if model is None else model)
-
+        self.set_ex_model("FaceHRNet09V4ELU" if ex_model is None else ex_model)
+        self.set_est_model("SNREstimatorNetMonteCarlo" if est_model is None else est_model)
+        
 
         # set wandb
         if use_wandb:
@@ -109,11 +118,35 @@ class Predictor:
             raise ValueError(f"Model not found")
         
         if transfer_learning:
+            print("hi")
             self.model = model(dropout = self.config["dropout"], batchnorm = self.config["batchnorm"], finetune = self.config["finetune"])
         else:
             self.model = model()
         
         self.model.to(self.device)
+
+    def set_ex_model(self, model):
+        print(f"{self._class} Setting ex model to {model}")
+      
+        model = models.get(model)
+        if model is None:
+            raise ValueError(f"Model not found")
+        
+        self.ex_model = model(rgb=True)
+        #self.ex_model.setup([1,0,0,0,0,0,0,0,0,0,0,0], 3, 3, 300)
+        self.ex_model.to(self.device)
+
+    def set_est_model(self, model):
+        print(f"{self._class} Setting est model to {model}")
+      
+        model = models.get(model)
+        if model is None:
+            raise ValueError(f"Model not found")
+        
+        self.est_model = model()
+        #self.est_model.setup(ex)
+        self.est_model.setup([0,0,0,0,0,0,0,0,0,0,0,0], 3, 3, 3)
+        self.est_model.to(self.device)
 
 
     def set_dataset(self):
@@ -137,6 +170,9 @@ class Predictor:
         # set optimizer
         #self.optimizer = torch.optim.__dict__.get(optimizer)(self.model.parameters(), **self.config.get("optimizer_kwargs", {}))
         self.optimizer = torch.optim.__dict__.get(optimizer)(self.model.parameters(),)
+        self.extractor_optimizer = torch.optim.Adam(self.ex_model.parameters(), lr=0.0001, weight_decay=0.000)
+        self.estimator_optimizer = torch.optim.Adam(self.est_model.parameters(), lr=0.1, weight_decay=0.000)
+
         
         
         
@@ -188,10 +224,12 @@ class Predictor:
         # set loss function
         criterion_pearson = Neg_Pearson()
         criterion_binary = torch.nn.BCELoss()
+        criterion_L1 = torch.nn.L1Loss()
         criterion_mse = torch.nn.MSELoss()
         self.loss_fun = lambda output, target: criterion_pearson(output, target)
         self.loss_fun_skin = lambda output, target: criterion_binary(output, target)
-        self.loss_fun_HR = lambda output, target: criterion_mse(output, target)
+        self.loss_fun_L1 = lambda output, target: criterion_L1(output, target)
+        self.loss_fun_mse = lambda output, target: criterion_mse(output, target)
 
         # set optimizer
         self.set_optimizer()
@@ -200,49 +238,106 @@ class Predictor:
         self.best_test_loss = 3
 
 
+    def butter_bandpass(self, lowcut, highcut, fs, order=5):
+        nyq = 0.5 * fs
+        low = lowcut / nyq
+        high = highcut / nyq
+        b, a = butter(order, [low, high], btype='band')
+        return b, a
+
+
+    def butter_bandpass_filter(self, data, lowcut, highcut, fs, order=5):
+        b, a = self.butter_bandpass(lowcut, highcut, fs, order=order)
+        y = lfilter(b, a, data)
+        return y
+    
+
     def train_step(self, data, target, target_skin):
         # send data to device
         data, target, target_skin = data.to(self.device), target.to(self.device), target_skin.to(self.device)
 
         #Zero the gradients computed for each weight
         self.optimizer.zero_grad()
+        #self.estimator_optimizer.zero_grad()
+        #self.extractor_optimizer.zero_grad()
+
 
         #Forward pass your image through the network
         skin_map, rPPG_aux, rPPG, rPPG_SA1, rPPG_SA2, rPPG_SA3, rPPG_SA4, x_visual6464, x_visual3232  = self.model(data)
+        #rPPG2 = self.ex_model(torch.swapaxes(data.squeeze(0), 0, 1)).squeeze().unsqueeze(dim=0).unsqueeze(dim=0)
+        #output = self.ex_model(data.squeeze(0)).squeeze().unsqueeze(dim=0).unsqueeze(dim=0)
+        #print(output)
+        #outputs = (output - torch.mean(output)) / torch.std(output)
+        #fs = 120
+        #lowcut = 0.1
+        #highcut = 15
 
-        #rPPG = (rPPG-torch.mean(rPPG)) /torch.std(rPPG)	 	# normalize2
-        #rPPG_SA1 = (rPPG_SA1-torch.mean(rPPG_SA1)) /torch.std(rPPG_SA1)	 	# normalize2
-        #rPPG_SA2 = (rPPG_SA2-torch.mean(rPPG_SA2)) /torch.std(rPPG_SA2)	 	# normalize2
-        #rPPG_SA3 = (rPPG_SA3-torch.mean(rPPG_SA3)) /torch.std(rPPG_SA3)	 	# normalize2
-        #rPPG_SA4 = (rPPG_SA4-torch.mean(rPPG_SA4)) /torch.std(rPPG_SA4)	 	# normalize2
-        #rPPG_aux = (rPPG_aux-torch.mean(rPPG_aux)) /torch.std(rPPG_aux)	 	# normalize2
+        #filtered_outputs = self.butter_bandpass_filter(outputs.detach().cpu().numpy(), lowcut, highcut, fs, order=4)
+        #filtered_outputs = (filtered_outputs - np.mean(filtered_outputs)) / np.std(filtered_outputs)
+        #print(torch.mean(torch.from_numpy(filtered_outputs).view(1, 300), dim=-1))
 
-        rPPG = (rPPG-torch.min(rPPG)) / (torch.max(rPPG) -torch.min(rPPG)) 	# normalize2
-        rPPG_SA1 = (rPPG_SA1-torch.min(rPPG_SA1)) / (torch.max(rPPG_SA1) -torch.min(rPPG_SA1))	 	# normalize2
-        rPPG_SA2 = (rPPG_SA2-torch.min(rPPG_SA2)) / (torch.max(rPPG_SA2) -torch.min(rPPG_SA2))	 	# normalize2
-        rPPG_SA3 = (rPPG_SA3-torch.min(rPPG_SA3)) / (torch.max(rPPG_SA3) -torch.min(rPPG_SA3))	 	# normalize2
-        rPPG_SA4 = (rPPG_SA4-torch.min(rPPG_SA4)) / (torch.max(rPPG_SA4) -torch.min(rPPG_SA4))	 	# normalize2
-        rPPG_aux = (rPPG_aux-torch.min(rPPG_aux)) / (torch.max(rPPG_aux) -torch.min(rPPG_aux))
+        #x - torch.mean(x, dim=-1).unsqueeze(dim=-1)
+        #print(rPPG2.size())
+        
+        #output = self.est_model(output).squeeze()
+        #print(output)
+        #output = torch.mul(output.item(), 100)
+        #print(output)
+        #print("Estimated HR from ex/est model: ", output.item())
+        
+        rPPG = (rPPG-torch.mean(rPPG)) /torch.std(rPPG)	# normalize2
+        rPPG_SA1 =(rPPG_SA1-torch.mean(rPPG_SA1)) /torch.std(rPPG_SA1) 	# normalize2
+        rPPG_SA2 = (rPPG_SA2-torch.mean(rPPG_SA2)) /torch.std(rPPG_SA2)	 	# normalize2
+        rPPG_SA3 = (rPPG_SA3-torch.mean(rPPG_SA3)) /torch.std(rPPG_SA3)	 	# normalize2
+        rPPG_SA4 = (rPPG_SA4-torch.mean(rPPG_SA4)) /torch.std(rPPG_SA4) 	# normalize2
+        rPPG_aux = (rPPG_aux-torch.mean(rPPG_aux)) /torch.std(rPPG_aux) 	# normalize2
 
+
+        #rPPG = self.ex_model(rPPG.squeeze().unsqueeze(dim=0).unsqueeze(dim=0))
+        #rPPG = rPPG.detach().cpu().squeeze(0).numpy()
+        #rPPG = hp.filter_signal(rPPG, cutoff = 5, sample_rate = 30, order = 3, filtertype='lowpass')
+        #target = torch.mean(target.float()[0]).cuda()
+        #print("GT mean HR: ", target.item())
+        # try:
+        #     working_data, measures = hp.process(rPPG, sample_rate=30)
+        #     target = torch.mean(target.float()[0])
+        #     output = torch.mean(torch.tensor(measures['bpm']))
+        #     print("GT HR: ", target.item())
+        #     print("Model Output HR: ", output.item())
+        #     loss_binary = self.loss_fun_skin(skin_map, target_skin) 
+        #     loss_ecg = self.loss_fun_HR(output.to(self.device), target)
+        # except hp.exceptions.BadSignalWarning:
+        #     print("Model output too bad to calculate HR")
+        #     loss_binary = np.inf
+        #     loss_ecg = np.inf
         #Compute the loss
-        print(rPPG)
-        print(target)
-        loss_binary = self.loss_fun_skin(skin_map, target_skin) 
-        loss_ecg = self.loss_fun(rPPG, target)
-        loss_ecg1 = self.loss_fun(rPPG_SA1, target)
-        loss_ecg2 = self.loss_fun(rPPG_SA2, target)
-        loss_ecg3 = self.loss_fun(rPPG_SA3, target)
-        loss_ecg4 = self.loss_fun(rPPG_SA4, target)
-        loss_ecg_aux = self.loss_fun(rPPG_aux, target)
 
-        loss = 0.1*loss_binary +  0.5*(loss_ecg1 + loss_ecg2 + loss_ecg3 + loss_ecg4 + loss_ecg_aux) + loss_ecg
+        #assert len(rPPG.detach().cpu().numpy()[0]) == len(target.cpu().numpy()[0]) 
+
+        loss_binary = self.loss_fun_skin(skin_map, target_skin)
+        loss_ecg = self.loss_fun(rPPG.to(torch.float64).to(self.device), target)
+        loss_ecg1 = self.loss_fun(rPPG_SA1.to(torch.float64).to(self.device), target)
+        loss_ecg2 = self.loss_fun(rPPG_SA2.to(torch.float64).to(self.device), target)
+        loss_ecg3 = self.loss_fun(rPPG_SA3.to(torch.float64).to(self.device), target)
+        loss_ecg4 = self.loss_fun(rPPG_SA4.to(torch.float64).to(self.device), target)
+        loss_ecg_aux = self.loss_fun(rPPG_aux.to(torch.float64).to(self.device), target)
+        if self.loss_version == "org":
+            loss = 0.1*loss_binary +  0.5*(loss_ecg1 + loss_ecg2 + loss_ecg3 + loss_ecg4 + loss_ecg_aux) + loss_ecg
+        else:
+            loss = self.loss_fun_mse(rPPG.to(torch.float64).to(self.device), target)
+    
+        #train_abs_err = (torch.abs(output - target)).view(1)
+        #train_sq_err = ((output - target) ** 2).view(1)
+        #loss = train_abs_err
+        #print(loss)
         #Backward pass through the network
         loss.backward()
 
         #Update the weights
         self.optimizer.step()
 
-
+        #return loss_binary, loss_ecg, loss
+        #return train_abs_err, train_sq_err
         return loss_binary, loss_ecg, loss_ecg1, loss_ecg2, loss_ecg3, loss_ecg4, loss_ecg_aux, loss
 
 
@@ -262,15 +357,19 @@ class Predictor:
             ecg3_loss = 0
             ecg4_loss = 0
             ecg_aux_loss = 0
-
+            self.epoch = epoch
             self.model.train()
+            #self.est_model.train()
+            #self.ex_model.train()
             count = 0
-            pbar = tqdm(enumerate(self.train_loader), total=len(self.train_loader))
+            pbar = tqdm(enumerate(self.train_loader), total=5)
             #pbar = tqdm(enumerate(self.train_loader), total=int(1969/85))
             for minibatch_no, (target_skin, data, target) in pbar:
-                if target.shape[1] != 64:
+                if target.shape[1] != self.frames:
                     break
                 loss_binary, loss_ecg, loss_ecg1, loss_ecg2, loss_ecg3, loss_ecg4, loss_ecg_aux, loss = self.train_step(data, target, target_skin)
+                #loss_binary, loss_ecg, loss = self.train_step(data, target, target_skin)
+                #train_abs_err, train_sq_err = self.train_step(data, target, target_skin)
                 count += 1
                 train_loss += loss.item()
                 binary_loss += loss_binary.item()
@@ -285,7 +384,7 @@ class Predictor:
                 # break if dev mode
                 if self.dev_mode:
                     break
-
+                    
             #Comput the train accuracy
             train_loss /= count
             binary_loss /= count
@@ -309,6 +408,7 @@ class Predictor:
             
             # test 
             test_loss, test_loss_binary, test_loss_ecg, test_loss_ecg1, test_loss_ecg2, test_loss_ecg3, test_loss_ecg4, test_loss_ecg_aux = self.test(validation=True)
+            #test_loss, test_loss_binary, test_loss_ecg = self.test(validation=True)
             
             # take step in scheduler
             if self.scheduler:
@@ -337,7 +437,7 @@ class Predictor:
                     "Train metrics/ecg3_Loss":  ecg3_loss,
                     "Train metrics/ecg4_Loss":  ecg4_loss,
                     "Train metrics/ecg_aux_Loss":  ecg_aux_loss,
-                    "Train metrics/Total_Loss":  loss,
+                    "Train metrics/Total_Loss":  train_loss,
                     "epoch":        epoch,
                     "Test metrics/Binary_Loss":  test_loss_binary,
                     "Test metrics/ecg_Loss":  test_loss_ecg,
@@ -345,7 +445,7 @@ class Predictor:
                     "Test metrics/ecg2_Loss":  test_loss_ecg2,
                     "Test metrics/ecg3_Loss":  test_loss_ecg3,
                     "Test metrics/ecg4_Loss":  test_loss_ecg4,
-                    "Test metrics/ecg_aux_Loss":  test_loss_ecg_aux,
+                    "Test metrics/ecg_aux_Loss": test_loss_ecg_aux,
                     "Test metrics/Total_loss": test_loss,
                 })
             
@@ -377,12 +477,17 @@ class Predictor:
         
         # Test the model
         self.model.eval()
+        #self.ex_model.eval()
+        #self.est_model.eval()
+        print("Validating...")
         count = 0
+        inner_count = 0
         for target_skin, data, target in data_loader:
+            inner_count += 1
             data = data.to(self.device)
             target_skin = target_skin.to(self.device)
             target = target.to(self.device)
-            if target.shape[1] != 64:
+            if target.shape[1] != self.frames:
                 break
             count += 1
             with torch.no_grad():
@@ -398,12 +503,12 @@ class Predictor:
             rPPG_aux = (rPPG_aux-torch.mean(rPPG_aux)) /torch.std(rPPG_aux)	 	# normalize2
 
             tlb = self.loss_fun_skin(skin_map, target_skin) 
-            tle = self.loss_fun(rPPG, target)
-            tle1 = self.loss_fun(rPPG_SA1, target)
-            tle2 = self.loss_fun(rPPG_SA2, target)
-            tle3 = self.loss_fun(rPPG_SA3, target)
-            tle4 = self.loss_fun(rPPG_SA4, target)
-            tlea = self.loss_fun(rPPG_aux, target)
+            tle = self.loss_fun(rPPG.to(torch.float64), target)
+            tle1 = self.loss_fun(rPPG_SA1.to(torch.float64), target)
+            tle2 = self.loss_fun(rPPG_SA2.to(torch.float64), target)
+            tle3 = self.loss_fun(rPPG_SA3.to(torch.float64), target)
+            tle4 = self.loss_fun(rPPG_SA4.to(torch.float64), target)
+            tlea = self.loss_fun(rPPG_aux.to(torch.float64), target)
 
             test_loss_binary += tlb
             test_loss_ecg += tle
@@ -413,8 +518,31 @@ class Predictor:
             test_loss_ecg4 += tle4
             test_loss_ecg_aux += tlea
 
-            test_loss += 0.1*tlb + 0.5*(tle1 + tle2 + tle3 + tle4 + tlea) + tle
-            print(test_loss.item()/count)
+            if self.loss_version == "org":
+                test_loss += 0.1*tlb + 0.5*(tle1 + tle2 + tle3 + tle4 + tlea) + tle
+            else:
+                test_loss += self.loss_fun_mse(rPPG.to(self.device), target)
+            print("Test Loss: ", test_loss.item()/count)
+
+            if inner_count == 3:
+                print("saving a plot...")
+                #print(rPPG.cpu().numpy())
+                #print(target.cpu().numpy())
+                plt.figure(figsize=(10,8))
+                model_output = rPPG.cpu().numpy()[0]
+                target = target.cpu().numpy()[0]
+                plt.plot(model_output, label = "model_output")
+                plt.plot(target, label = "target")
+                plt.title("Test iteration {} for epoch {}".format(inner_count, self.epoch))
+                plt.ylabel("Frame nr")
+                plt.legend()
+                path = 'model_figs/{}'.format(self.name)
+                if not os.path.exists(path):
+                    os.makedirs(path)
+                plt.savefig('{}/signals_{}_{}.png'.format(path, self.epoch, inner_count))
+                if self.wandb_run is not None:
+                    self.wandb_run.log({"plots/{}".format(self.epoch):'{}/signals_{}_{}.png'.format(path, self.epoch, inner_count)
+                })
             
 
         # compute stats
@@ -440,6 +568,7 @@ class Predictor:
 
 
         return test_loss, test_loss_binary, test_loss_ecg, test_loss_ecg1, test_loss_ecg2, test_loss_ecg3, test_loss_ecg4, test_loss_ecg_aux
+        #return test_loss, test_loss_binary, test_loss_ecg
 
 
    # def sweep(self, **kwargs):
@@ -460,7 +589,7 @@ class Predictor:
 
 
 if __name__ == "__main__":
-    predictor = Predictor(project="Eulerian_mag", model = "rPPGNet", use_wandb=False, optimizer = "Adam",)
+    predictor = Predictor(project="Eulerian_mag", model = "rPPGNet", frames=300, use_wandb=True, optimizer = "Adam",)
     # classifier.dev_mode = True
     predictor.train(num_epochs=50)
     # classifier.sweep()
