@@ -24,13 +24,13 @@ default_config = {
 	# kwargs
 	"optimizer_kwargs" : {"lr": 0.0001},
 	"train_dataset_kwargs" : {#"json_file" :'Data/json_structure',
-                              "root_dir": "/work3/s174159/data/",
-                              "frames": 300,
+                              "root_dir": "/work3/s174159/Bench_data/",
+                              "frames": 64,
                               "verbosity": True
 							  },
 	"test_dataset_kwargs" : {#"json_file" :'Data/json_structure',
-                              "root_dir": "/work3/s174159/data/",
-                              "frames": 300},
+                              "root_dir": "/work3/s174159/Bench_data/",
+                              "frames": 64},
 	"train_dataloader_kwargs" : {},
 	"test_dataloader_kwargs" : {},
 }
