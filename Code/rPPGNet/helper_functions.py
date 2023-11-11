@@ -62,7 +62,7 @@ class helper_functions:
                               continue
             return video_paths, ecg_paths, idx_paths, bb_data_paths
       
-      def bandpass_filter(data, lowcut = 0.05, highcut = 100.0, fs = 500, order=2):
+      def bandpass_filter(data, lowcut = 0.05, highcut = 30.0, fs = 500, order=2):
             nyquist = 0.5 * fs
             low = lowcut / nyquist
             high = highcut / nyquist
