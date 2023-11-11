@@ -4,7 +4,7 @@ import torchvision
 from tqdm import tqdm
 import os
 from _config import wandb_defaults, default_config
-from dataloader import CustomDataset, CustomDataset_OLD
+from dataloader import CustomDataset, CustomDataset_OLD, BenchDataset
 import wandb
 from utils import download_model, ReduceLROnPlateau
 import scipy
@@ -150,9 +150,9 @@ class Predictor:
 
 
     def set_dataset(self):
-        self.data_train = CustomDataset(**self.config.get("train_dataset_kwargs", {}), purpose="train")
-        self.data_test = CustomDataset(**self.config.get("test_dataset_kwargs", {}), purpose="test")
-        self.data_val = CustomDataset(**self.config.get("test_dataset_kwargs", {}), purpose="val")
+        self.data_train = BenchDataset(**self.config.get("train_dataset_kwargs", {}), purpose="train")
+        self.data_test = BenchDataset(**self.config.get("test_dataset_kwargs", {}), purpose="test")
+        self.data_val = BenchDataset(**self.config.get("test_dataset_kwargs", {}), purpose="val")
              
         self.train_loader = self.data_train.get_dataloader(**self.config.get("train_dataloader_kwargs", {}))
         self.test_loader = self.data_test.get_dataloader(**self.config.get("train_dataloader_kwargs", {}))
@@ -591,7 +591,7 @@ class Predictor:
 
 
 if __name__ == "__main__":
-    predictor = Predictor(project="Eulerian_mag", model = "rPPGNet", frames=300, use_wandb=False, optimizer = "Adam",)
+    predictor = Predictor(project="Eulerian_mag", model = "rPPGNet", frames=64, use_wandb=False, optimizer = "Adam",)
     # classifier.dev_mode = True
     predictor.train(num_epochs=50)
     # classifier.sweep()

@@ -7,6 +7,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 import json
 from scipy import signal
+import cv2
 
 
 pd.options.mode.chained_assignment = None
@@ -199,13 +200,180 @@ class CustomDataset_OLD(Dataset):
             return train_loader, val_loader
         else:
             return DataLoader(self, batch_size=batch_size, shuffle=False, *args, **kwargs)
-    
+
+
+class BenchDataset(Dataset):
+    """Custom dataset for the benchmark dataset
+    Args:
+        root_dir (string): Directory with all the videos.
+        createCSV (bool): If true, creates the csv files for the dataset and saves them in the same directory as the video.
+        createBBOX (bool): If true, creates the bounding boxes for the dataset and saves them in the same directory as the video.
+
+    """
+
+    def __init__(
+        self, root_dir, createCSV=False, createBBOX=False, frames=64, verbosity=False, purpose="train"
+    ):
+        self.root_dir = root_dir
+        self._class = "[Custom dataset]"
+        self.video_files = []
+        self.videoECG_counter = 0
+        self.csv_files = []
+        self.bbox_files = []
+        self.verbosity = verbosity
+        self.frames = frames
+        self.videoDriver = MultipleVideoDriver()
+        self.purpose = purpose
+        self.random_list = random.sample(range(82), 82)
+        self.train_subset, self.test_subset, self.val_subset = torch.utils.data.random_split(
+        self, [0.7, 0.2, 0.1], generator=torch.Generator().manual_seed(1))
+        # self.net = cv2.dnn.readNetFromCaffe(
+        #     prototxt=("../../Models/deploy.prototxt.txt"),
+        #     caffeModel=(
+        #         "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"
+        #     ),
+        # )
+        print(os.getcwd())
+        self.net = cv2.dnn.readNetFromCaffe(prototxt="Models/deploy.prototxt.txt", caffeModel="Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel")
+        self.start_frame_idx = 1
+        self.current_frame_idx = self.start_frame_idx
+
+        if createCSV:
+            helper_functions.converter_driver(self.root_dir)
+
+        for root, dirs, files in os.walk(root_dir):
+            for file in files:
+                if file.endswith("edited.avi"):
+                    video_file = os.path.join(root, file)
+                    self.video_files.append(video_file)
+                if file.endswith("output.csv"):
+                    csv_file = os.path.join(root, file)
+                    self.csv_files.append(csv_file)
+                if file.endswith("box.csv"):
+                    bbox_file = os.path.join(root, file)
+                    self.bbox_files.append(bbox_file)
+        if createBBOX:
+            for i in range(len(self.video_files)):
+                video_file = self.video_files[i]
+                helper_functions.start_video_feed(video_file, self.net)
+
+    def __len__(self):
+        return len(self.video_files)
+
+    def load_video_frames(self, video_path, bbdata, cur_frame_idx):
+        print(f"{self._class} Converting")
+        mask_array, frame_array = self.videoDriver.convert_video_with_progress(
+            video_file=video_path,
+            data=bbdata,
+            frames_to_process=self.frames + 1,
+            starting_frame=cur_frame_idx,
+            verbosity=False,
+        )
+        mask_array = helper_functions.binary_mask(mask_array)
+        return mask_array, frame_array
+
+    def load_ecg_data(self, ecg_path, start_frame, end_frame):
+        ecg = pd.read_csv(ecg_path)
+        ecg = ecg["ECG-A(mV)"]
+        ecg = ecg[start_frame : end_frame + 1]
+        return ecg
+
+    def __getitem__(self, idx):
+        video_path = self.video_files[idx]
+        ecg_path = self.csv_files[idx]
+        bbox_path = self.bbox_files[idx]
+
+        bb_data = pd.read_csv(bbox_path)
+        bb_data = bb_data[["X", "Y", "Width", "Height"]]
+
+        column_mapping = {
+            "X": "x",
+            "Y": "y",
+            "Width": "w",
+            "Height": "h",
+        }
+        # Rename the columns using the dictionary
+        bb_data.rename(columns=column_mapping, inplace=True)
+
+        start_frame = self.current_frame_idx
+        video_frame_count = helper_functions.get_video_frame_count(video_path)
+        end_frame = start_frame + min(self.frames, video_frame_count - start_frame)
+
+        if self.verbosity:
+            print(
+                f"{self._class} [INFO]: VideoFile: {video_path} | ECGFile: {ecg_path} |"
+            )
+            print(
+                f"{self._class} [INFO]: VideoCounter: {self.videoECG_counter} | FrameCounter: {start_frame} | TotalFrames: {video_frame_count}"
+            )
+
+        mask_array, frame_array = self.load_video_frames(
+            video_path=video_path, bbdata=bb_data, cur_frame_idx=start_frame
+        )
+        ecg = self.load_ecg_data(
+            ecg_path=ecg_path, start_frame=start_frame, end_frame=end_frame
+        )
+
+        skin_seg_label, frame_tensor, ecg_tensor = helper_functions.tensor_transform(
+            mask_array, frame_array, ecg, self.frames
+        )
+        self.current_frame_idx = end_frame
+
+        if (not frame_tensor.shape[1] == self.frames) or (
+            not ecg_tensor.shape[0] == self.frames
+        ):
+            # print("Length of ecg GT", ecg_tensor.shape[0])
+            # print("Number of frames:", frame_tensor.shape[1])
+            if self.verbosity:
+                print(f"{self._class} [DEBUGGING]", start_frame)
+                print(
+                    f"{self._class} [DEBUGGING] Video frames available",
+                    video_frame_count,
+                )
+                # for i in range(5000):
+                print(f"{self._class} [INFO] GETTING NEW VIDEO!")
+            self.videoECG_counter += 1
+            self.current_frame_idx = self.start_frame_idx
+        if end_frame + self.frames >= video_frame_count:
+            # Move to the next video
+            self.videoECG_counter += 1
+            self.current_frame_idx = self.start_frame_idx
+
+        return skin_seg_label, frame_tensor, ecg_tensor
+
+    def get_dataloader(self, batch_size=1, *args, **kwargs):
+        if self.purpose == "train":
+            return DataLoader(
+                dataset=self.train_subset,
+                shuffle=True,
+                batch_size=batch_size,
+                *args,
+                **kwargs,
+            )
+        if self.purpose == "test":
+            return DataLoader(
+                dataset=self.test_subset,
+                shuffle=False,
+                batch_size=batch_size,
+                *args,
+                **kwargs,
+            )
+        if self.purpose == "val":
+            return DataLoader(
+                dataset=self.val_subset,
+                shuffle=False,
+                batch_size=batch_size,
+                *args,
+                **kwargs,
+            )
+
 if __name__ == "__main__":
     # Define your data and DataLoader
     json_file = 'Data/json_structure'
-    root_dir = "/work3/s174159/data/"
+    # root_dir = "/work3/s174159/data/"
+    root_dir = "/work3/s174159/Bench_data/"
     frames = 200
-    custom_dataset = CustomDataset(root_dir=root_dir, frames=frames, verbosity=True)
+    custom_dataset = BenchDataset(root_dir=root_dir, frames=frames, verbosity=True)
     data_loader = DataLoader(custom_dataset, batch_size=1, shuffle=True)
     l_loader = len(data_loader)
     # Iterate through the DataLoader to access your data

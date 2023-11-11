@@ -230,4 +230,9 @@ pip-selfcheck.json
 .history
 .ionide
 
+
+
+## Other datasets
+
+Bench_data/
 # End of https://www.toptal.com/developers/gitignore/api/virtualenv,python,jupyternotebooks,visualstudiocode
