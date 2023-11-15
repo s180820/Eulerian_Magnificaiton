@@ -13,8 +13,10 @@ from helper_functions import helper_functions
 import heartpy as hp
 from models import models
 from loss_functions import Neg_Pearson, Neg_Pearson2
-from scipy.signal import butter, lfilter
+from scipy.signal import butter, lfilter, find_peaks
 import matplotlib.pyplot as plt
+from QRSDetectorOffline import QRSDetectorOffline
+import pandas as pd
 
 from datetime import datetime as dt
 
@@ -150,9 +152,12 @@ class Predictor:
 
 
     def set_dataset(self):
-        self.data_train = BenchDataset(**self.config.get("train_dataset_kwargs", {}), purpose="train")
-        self.data_test = BenchDataset(**self.config.get("test_dataset_kwargs", {}), purpose="test")
-        self.data_val = BenchDataset(**self.config.get("test_dataset_kwargs", {}), purpose="val")
+        # self.data_train = BenchDataset(**self.config.get("train_dataset_kwargs", {}), purpose="train")
+        # self.data_test = BenchDataset(**self.config.get("test_dataset_kwargs", {}), purpose="test")
+        # self.data_val = BenchDataset(**self.config.get("test_dataset_kwargs", {}), purpose="val")
+        self.data_train = CustomDataset(**self.config.get("train_dataset_kwargs", {}), purpose="train")
+        self.data_test = CustomDataset(**self.config.get("test_dataset_kwargs", {}), purpose="test")
+        self.data_val = CustomDataset(**self.config.get("test_dataset_kwargs", {}), purpose="val")
              
         self.train_loader = self.data_train.get_dataloader(**self.config.get("train_dataloader_kwargs", {}))
         self.test_loader = self.data_test.get_dataloader(**self.config.get("train_dataloader_kwargs", {}))
@@ -296,23 +301,10 @@ class Predictor:
 
         #rPPG = self.ex_model(rPPG.squeeze().unsqueeze(dim=0).unsqueeze(dim=0))
         #rPPG = rPPG.detach().cpu().squeeze(0).numpy()
-        #rPPG = hp.filter_signal(rPPG, cutoff = 5, sample_rate = 30, order = 3, filtertype='lowpass')
         #target = torch.mean(target.float()[0]).cuda()
         #print("GT mean HR: ", target.item())
-        # try:
-        #     working_data, measures = hp.process(rPPG, sample_rate=30)
-        #     target = torch.mean(target.float()[0])
-        #     output = torch.mean(torch.tensor(measures['bpm']))
-        #     print("GT HR: ", target.item())
-        #     print("Model Output HR: ", output.item())
-        #     loss_binary = self.loss_fun_skin(skin_map, target_skin) 
-        #     loss_ecg = self.loss_fun_HR(output.to(self.device), target)
-        # except hp.exceptions.BadSignalWarning:
-        #     print("Model output too bad to calculate HR")
-        #     loss_binary = np.inf
-        #     loss_ecg = np.inf
+       
         #Compute the loss
-
         #assert len(rPPG.detach().cpu().numpy()[0]) == len(target.cpu().numpy()[0]) 
         
         loss_binary = self.loss_fun_skin(skin_map, target_skin)
@@ -324,6 +316,23 @@ class Predictor:
         loss_ecg_aux = self.loss_fun(rPPG_aux.to(torch.float64).to(self.device), target)
         if self.loss_version == "org":
             loss = 0.1*loss_binary +  0.5*(loss_ecg1 + loss_ecg2 + loss_ecg3 + loss_ecg4 + loss_ecg_aux) + loss_ecg
+        elif self.loss_version == "peaks":
+            model_output = rPPG.detach().cpu().numpy()[0]
+            target = target.detach().cpu().numpy()[0]
+            model_peaks = find_peaks(model_output, height = (1, None), distance=10)[0]
+            target_peaks = find_peaks(target, height = (1, None), distance=10)[0]
+            model_t = np.zeros(self.frames)
+            target_t = np.zeros(self.frames)
+            model_t[model_peaks] = 1
+            target_t[target_peaks] = 1
+            model_hr = 25/np.diff(model_peaks)*60
+            target_hr = 25/np.diff(target_peaks)*60
+            if len(model_peaks) < 2:
+                model_hr = [10000]
+            print("Model hr: ", model_hr)
+            print("Target hr: ", target_hr)
+            loss = torch.tensor(abs(np.mean(model_hr) - np.mean(target_hr)), requires_grad=True)
+
         else:
             loss = self.loss_fun_mse(rPPG.to(torch.float64).to(self.device), target)
     
@@ -367,6 +376,8 @@ class Predictor:
             #pbar = tqdm(enumerate(self.train_loader), total=int(1969/85))
             for minibatch_no, (target_skin, data, target) in pbar:
                 if target.shape[1] != self.frames:
+                    #print(target.shape[1])
+                    #print(self.frames)
                     break
                 loss_binary, loss_ecg, loss_ecg1, loss_ecg2, loss_ecg3, loss_ecg4, loss_ecg_aux, loss = self.train_step(data, target, target_skin)
                 #loss_binary, loss_ecg, loss = self.train_step(data, target, target_skin)
@@ -534,7 +545,19 @@ class Predictor:
                 target = target.cpu().numpy()[0]
                 plt.plot(model_output, label = "model_output")
                 plt.plot(target, label = "target")
-                #plt.scatter(t_peaks, peaks, color='r', marker='o', label='Peaks')
+                #temp = pd.DataFrame([target, model_output], columns=["target", "model_output"])
+                #temp.to_csv('temp.csv')
+                #peaks = QRSDetectorOffline(ecg_data_path="temp.csv", verbose=False, log_data=False, plot_data=False, show_plot=False).qrs_peaks_indices
+                peaks = find_peaks(target, height = (1, None), distance=10)[0]
+                t_peaks = [target[i] for i in peaks]
+                print("GT heartrates:", 25/np.diff(peaks)*60)
+                plt.scatter(peaks, t_peaks, color='r', marker='o', label='Peaks')
+
+                peaks = find_peaks(model_output, height = (1, None), distance=10)[0]
+                t_peaks = [model_output[i] for i in peaks]
+                print("Predicted heartrates:", 25/np.diff(peaks)*60)
+                plt.scatter(peaks, t_peaks, color='r', marker='o', label='Peaks')
+
                 plt.title("Test iteration {} for epoch {}. Loss: {}".format(inner_count, self.epoch, loss))
                 plt.xlabel("Frame nr")
                 plt.legend()
@@ -542,9 +565,9 @@ class Predictor:
                 if not os.path.exists(path):
                     os.makedirs(path)
                 plt.savefig('{}/signals_{}_{}.png'.format(path, self.epoch, inner_count))
-                if self.wandb_run is not None:
-                    self.wandb_run.log({"plots/{}".format(self.epoch):'{}/signals_{}_{}.png'.format(path, self.epoch, inner_count)
-                })
+                # if self.wandb_run is not None:
+                #     self.wandb_run.log({"plots/{}".format(self.epoch):'{}/signals_{}_{}.png'.format(path, self.epoch, inner_count)
+                # })
             
 
         # compute stats

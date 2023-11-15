@@ -80,9 +80,9 @@ class helper_functions:
             true_ecg = ecg[ecg["Lead"] == "Lead II"][" ECG"].reset_index(drop=True) - ecg[ecg["Lead"] == "Lead I"][" ECG"].reset_index(drop=True)
             ecg_norm = (true_ecg - np.mean(true_ecg)) / np.std(true_ecg) # GUSTAV 
             #ecg_mv = helper_functions.moving_average(ecg_norm, 3) #moving average # GUSSE
-            ecg_mv = helper_functions.bandpass_filter(ecg_norm)
+            #ecg_mv = helper_functions.bandpass_filter(ecg_norm, 0.1, 100)
              # start at the first frame of video
-            return ecg_mv
+            return ecg_norm
       
       def fft_filter(video, freq_min, freq_max, fps):
             fft = fftpack.fft(video, axis=0)

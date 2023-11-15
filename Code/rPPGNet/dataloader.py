@@ -235,8 +235,10 @@ class BenchDataset(Dataset):
         # )
         print(os.getcwd())
         self.net = cv2.dnn.readNetFromCaffe(prototxt="Models/deploy.prototxt.txt", caffeModel="Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel")
-        self.start_frame_idx = 1
+        self.start_frame_idx = 0
         self.current_frame_idx = self.start_frame_idx
+        self.ecgstart_idx = 0
+        self.current_ecg_idx = self.ecgstart_idx
 
         if createCSV:
             helper_functions.converter_driver(self.root_dir)
@@ -274,8 +276,11 @@ class BenchDataset(Dataset):
 
     def load_ecg_data(self, ecg_path, start_frame, end_frame):
         ecg = pd.read_csv(ecg_path)
-        ecg = ecg["ECG-A(mV)"]
-        ecg = ecg[start_frame : end_frame + 1]
+        ecg = signal.detrend(ecg["ECG-A(mV)"])
+        ecg = ecg[start_frame * 1024: end_frame * 1024]
+        ecg = helper_functions.bandpass_filter(ecg, fs=1024)
+        ecg = signal.resample(ecg, self.frames)
+        ecg = (ecg - np.mean(ecg)) / np.std(ecg)
         return ecg
 
     def __getitem__(self, idx):
@@ -299,6 +304,9 @@ class BenchDataset(Dataset):
         video_frame_count = helper_functions.get_video_frame_count(video_path)
         end_frame = start_frame + min(self.frames, video_frame_count - start_frame)
 
+        ecg_idx = self.current_ecg_idx
+        ecg_end = ecg_idx + 2
+
         if self.verbosity:
             print(
                 f"{self._class} [INFO]: VideoFile: {video_path} | ECGFile: {ecg_path} |"
@@ -311,19 +319,22 @@ class BenchDataset(Dataset):
             video_path=video_path, bbdata=bb_data, cur_frame_idx=start_frame
         )
         ecg = self.load_ecg_data(
-            ecg_path=ecg_path, start_frame=start_frame, end_frame=end_frame
+            ecg_path=ecg_path, start_frame=ecg_idx, end_frame=ecg_end
         )
 
         skin_seg_label, frame_tensor, ecg_tensor = helper_functions.tensor_transform(
             mask_array, frame_array, ecg, self.frames
         )
+    
+        ecg_tensor = torch.tensor(ecg)
         self.current_frame_idx = end_frame
+        self.current_ecg_idx = ecg_end
 
         if (not frame_tensor.shape[1] == self.frames) or (
             not ecg_tensor.shape[0] == self.frames
         ):
-            # print("Length of ecg GT", ecg_tensor.shape[0])
-            # print("Number of frames:", frame_tensor.shape[1])
+            #print("Length of ecg GT", ecg_tensor.shape[0])
+            #print("Number of frames:", frame_tensor.shape[1])
             if self.verbosity:
                 print(f"{self._class} [DEBUGGING]", start_frame)
                 print(
@@ -334,38 +345,41 @@ class BenchDataset(Dataset):
                 print(f"{self._class} [INFO] GETTING NEW VIDEO!")
             self.videoECG_counter += 1
             self.current_frame_idx = self.start_frame_idx
+            self.current_ecg_idx = self.ecgstart_idx
         if end_frame + self.frames >= video_frame_count:
             # Move to the next video
             self.videoECG_counter += 1
             self.current_frame_idx = self.start_frame_idx
+            self.current_ecg_idx = self.ecgstart_idx
 
         return skin_seg_label, frame_tensor, ecg_tensor
 
     def get_dataloader(self, batch_size=1, *args, **kwargs):
-        if self.purpose == "train":
-            return DataLoader(
-                dataset=self.train_subset,
-                shuffle=True,
-                batch_size=batch_size,
-                *args,
-                **kwargs,
-            )
-        if self.purpose == "test":
-            return DataLoader(
-                dataset=self.test_subset,
-                shuffle=False,
-                batch_size=batch_size,
-                *args,
-                **kwargs,
-            )
-        if self.purpose == "val":
-            return DataLoader(
-                dataset=self.val_subset,
-                shuffle=False,
-                batch_size=batch_size,
-                *args,
-                **kwargs,
-            )
+        # if self.purpose == "train":
+        #     return DataLoader(
+        #         dataset=self.train_subset,
+        #         shuffle=True,
+        #         batch_size=batch_size,
+        #         *args,
+        #         **kwargs,
+        #     )
+        # if self.purpose == "test":
+        #     return DataLoader(
+        #         dataset=self.test_subset,
+        #         shuffle=False,
+        #         batch_size=batch_size,
+        #         *args,
+        #         **kwargs,
+        #     )
+        # if self.purpose == "val":
+        #     return DataLoader(
+        #         dataset=self.val_subset,
+        #         shuffle=False,
+        #         batch_size=batch_size,
+        #         *args,
+        #         **kwargs,
+        #    )
+        return DataLoader(self, batch_size=batch_size, shuffle=False, *args, **kwargs)
 
 if __name__ == "__main__":
     # Define your data and DataLoader
