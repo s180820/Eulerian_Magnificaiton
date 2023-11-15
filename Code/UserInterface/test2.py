@@ -1,13 +1,12 @@
 # facial_tracking.py
 import cv2
 import numpy as np
-import sys
-import concurrent.futures
-import queue
-import threading
+import dlib
+
 
 PROTOTXT_PATH = "../../Models/Facial_recognition/deploy_prototxt.txt"
 MODEL_PATH = "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"
+DAT_PATH = "../../Models/Facial_recognition/shape_predictor_68_face_landmarks.dat"
 
 
 class EulerianMagnification:
@@ -29,6 +28,10 @@ class EulerianMagnification:
         self.webcam.set(3, self.realWidth)
         self.webcam.set(4, self.realHeight)
         self.Frame = None
+        self.face_detector = dlib.get_frontal_face_detector()
+        self.landmark_predictor = dlib.shape_predictor(DAT_PATH)
+        self.face_ids = {}
+        self.current_face_id = 0
 
         # Color magnification parameters
         self.levels = 3
@@ -98,7 +101,7 @@ class EulerianMagnification:
         videoGauss, firstGauss = self.init_gauss_pyramid()
         frequencies, mask = self.initBandPassFilter()
         pyramid = self.buildGauss(detectionFrame)[self.levels]
-        print(pyramid.shape, debugFace[5])
+        # print(pyramid.shape, debugFace[5])
         pyramid = cv2.resize(pyramid, (firstGauss.shape[0], firstGauss.shape[1]))
 
         videoGauss[self.bufferIdx] = pyramid
@@ -133,7 +136,23 @@ class EulerianMagnification:
         """
         for startX, startY, endX, endY, confidence in faces:
             cv2.rectangle(self.frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
-            text = f"Confidence: {confidence:.2f}"
+            face_center = ((startX + endX) // 2, (startY + endY) // 2)
+            face_id = None
+
+            for id, center in self.face_ids.items():
+                distance = (
+                    (face_center[0] - center[0]) ** 2
+                    + (face_center[1] - center[1]) ** 2
+                ) ** 0.5
+                if distance <= 90:
+                    face_id = id
+                    break
+            if face_id is None:
+                face_id = self.current_face_id
+                self.current_face_id += 1
+                self.face_ids[face_id] = face_center
+
+            text = f"Confidence: {confidence:.2f}, face_ID {face_id}"
             cv2.putText(
                 self.frame,
                 text,
@@ -196,6 +215,7 @@ class EulerianMagnification:
         """
         network = cv2.dnn.readNetFromCaffe(PROTOTXT_PATH, MODEL_PATH)
 
+        current_face_id = 0
         while True:
             ret, self.frame = self.webcam.read()
             if not ret:
