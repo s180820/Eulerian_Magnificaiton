@@ -2,11 +2,11 @@
 import cv2
 import numpy as np
 import dlib
-
+import time
+import threading
 
 PROTOTXT_PATH = "../../Models/Facial_recognition/deploy_prototxt.txt"
 MODEL_PATH = "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"
-DAT_PATH = "../../Models/Facial_recognition/shape_predictor_68_face_landmarks.dat"
 
 
 class EulerianMagnification:
@@ -28,10 +28,11 @@ class EulerianMagnification:
         self.webcam.set(3, self.realWidth)
         self.webcam.set(4, self.realHeight)
         self.Frame = None
-        self.face_detector = dlib.get_frontal_face_detector()
-        self.landmark_predictor = dlib.shape_predictor(DAT_PATH)
+
+        self.thread_lock = threading.Lock()
         self.face_ids = {}
         self.current_face_id = 0
+        self.threads = {}  # Dictionary to store threads for each face
 
         # Color magnification parameters
         self.levels = 3
@@ -139,18 +140,22 @@ class EulerianMagnification:
             face_center = ((startX + endX) // 2, (startY + endY) // 2)
             face_id = None
 
-            for id, center in self.face_ids.items():
-                distance = (
-                    (face_center[0] - center[0]) ** 2
-                    + (face_center[1] - center[1]) ** 2
-                ) ** 0.5
-                if distance <= 90:
-                    face_id = id
-                    break
-            if face_id is None:
-                face_id = self.current_face_id
-                self.current_face_id += 1
-                self.face_ids[face_id] = face_center
+            with self.thread_lock:
+                for id, center in self.face_ids.items():
+                    distance = (
+                        (face_center[0] - center[0]) ** 2
+                        + (face_center[1] - center[1]) ** 2
+                    ) ** 0.5
+                    if distance <= 90:
+                        face_id = id
+                        break
+                if face_id is None:
+                    face_id = self.current_face_id
+                    self.current_face_id += 1
+                    self.face_ids[face_id] = face_center
+                    thread = threading.Thread(target=self.process_face, args=(face_id,))
+                    thread.start()
+                    self.threads[face_id] = thread
 
             text = f"Confidence: {confidence:.2f}, face_ID {face_id}"
             cv2.putText(
@@ -175,6 +180,19 @@ class EulerianMagnification:
             )
 
             detectionFrame = self.frame[startY:endY, startX:endX, :]
+
+    def process_face(self, face_id):
+        """
+        This function takes in a face id and processes the face for heart rate
+        calculation.
+
+        input: face_id
+        output: None
+        """
+        print("hi")
+        while face_id in self.threads:
+            print(f"Processing face {face_id}, thread_ID {threading.get_ident()}")
+            time.sleep(0.5)
 
     def buildGauss(self, firstframe):
         pyramid = [firstframe]
