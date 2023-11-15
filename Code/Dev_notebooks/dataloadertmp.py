@@ -355,3 +355,30 @@ if __name__ == "__main__":
        print(f"Loader itertation: {i}/{l_loader}")
         #break
         # Your training code here
+        # Update the current frame index
+        self.current_frame_idx = end_frame
+        if (not frame_tensor.shape[1] == self.frames) or (not ecg_tensor.shape[0] == self.frames):
+            #print("Length of ecg GT", ecg_tensor.shape[0])
+            #print("Number of frames:", frame_tensor.shape[1])
+            if self.verbosity:
+                print(f"{self._class} [DEBUGGING]", start_frame)
+                print(f"{self._class} [DEBUGGING] Video frames available", video_frame_count)
+                #for i in range(5000):
+                print(f"{self._class} [INFO] GETTING NEW VIDEO!")
+            self.videoECG_counter += 1
+            self.current_frame_idx = self.start_frame_idx
+            #return torch.FloatTensor(), torch.FloatTensor(), torch.FloatTensor()
+            #self.__getitem__(idx)
+        
+        #assert frame_tensor.shape[1]> self.frames # Is allowed to be smaller - due to end of video.
+        #assert ecg_tensor.shape[0]>  self.frames # Is allowed to be smaller - due to end of video.
+
+        # Check if there are more frames in the current video for the next iteration.
+        if (end_frame + self.frames >= video_frame_count):
+            # Move to the next video
+            self.videoECG_counter += 1
+            self.current_frame_idx = self.start_frame_idx 
+
+        return skin_seg_label, frame_tensor, ecg_tensor
+        
+    
