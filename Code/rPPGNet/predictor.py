@@ -476,6 +476,7 @@ class Predictor:
             self.prepare([0])
             data_loader = self.test_loader
         data_len = len(data_loader.dataset)
+        print(data_loader)
         
         # Init counters
         test_loss = 0
