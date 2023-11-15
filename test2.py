@@ -201,8 +201,8 @@ def start_video_feed(cap, display_pyramid=True):
         with plt.ion():
             ax1.clear()
             ax1.plot(bpms)
-            ax.set_xlabel('Time')
-            ax.set_ylabel('BPM')
+            ax1.set_xlabel('Time')
+            ax1.set_ylabel('BPM')
             plt.show()
             plt.pause(0.0001)
 

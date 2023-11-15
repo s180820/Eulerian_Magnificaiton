@@ -5,7 +5,9 @@ import cv2
 import numpy as np
 import sys
 import os
-
+import matplotlib.pyplot as plt
+import matplotlib
+import plotly.express as px  # interactive charts
 
 st.set_page_config(page_title="Eulerian Magnification", page_icon=":eyeglasses:")
 tab1, tab2, tab3 = st.tabs(["Pre-recorded video", "Live feed", "About"])
@@ -70,11 +72,16 @@ with tab2:
     stop_bottom_pressed = st.button("Stop")
 
     frame_placeholder = st.empty()
-
-    # Test
-    display_pyramid = True
+    #matplotlib.use('TkAgg')
+    placeholder = st.empty()
 
     if start_button_pressed:
+        pyramid_button = st.button("Pyramid Off/On")
+        # Test
+        if pyramid_button:
+            display_pyramid = True
+        if not pyramid_button:
+            display_pyramid = False
         cap = cv2.VideoCapture(0)
         while cap.isOpened() and not stop_bottom_pressed:
             ret, frame = cap.read()
@@ -136,6 +143,12 @@ with tab2:
             endY = 0
             startX = 0
             endX = 0
+
+            fig = plt.figure()
+            ax1 = fig.add_subplot(1,1,1)
+            fps = cap.get(cv2.CAP_PROP_FPS)
+
+            bpms=[]
 
             i = 0
             while True:
@@ -233,11 +246,12 @@ with tab2:
 
                 bufferIndex = (bufferIndex + 1) % bufferSize
 
-                frame[startY:endY, startX:endX, :] = outputFrame
                 if display_pyramid:
-                    cv2.rectangle(
-                        frame, (startX, startY), (endX, endY), boxColor, boxWeight
-                    )
+                    frame[startY:endY, startX:endX, :] = outputFrame
+                
+                cv2.rectangle(
+                    frame, (startX, startY), (endX, endY), boxColor, boxWeight
+                )
                 if i > bpmBufferSize:
                     cv2.putText(
                         frame,
@@ -262,10 +276,37 @@ with tab2:
                     frame = cv2.cvtColor(
                         frame, cv2.COLOR_BGR2RGB
                     )  # RGB Format to support streamlit
+                bpms.append(bpmBuffer.mean())
+                # with plt.ion():
+                #     ax1.clear()
+                #     ax1.plot(bpms)
+                #     ax1.set_xlabel('Time')
+                #     ax1.set_ylabel('BPM')
+                #     plt.pause(0.0001)
+                #     with fig_col1:
+                #         st.write(fig)
+                with placeholder.container():
+                    fig_col1, fig_col2 = st.columns(2)
+                    with fig_col1:
+                        st.markdown("### BPM over time")
+                        fig = px.line(x=np.arange(len(bpms)), y=bpms, labels={"x": "Time", "y": "BPM"})
+                        st.write(fig)
+                    with fig_col2:
+                        st.markdown("### BPM Statistics")
+                        bpm_df = pd.DataFrame(bpms, columns=["BPM"])
+                        bpm_df = bpm_df.describe()
+                        bpm_df = bpm_df.drop(["count", "min", "25%", "50%", "75%"])
+                        bpm_df = bpm_df.rename(index={"mean": "Mean", "max": "Max", "std": "Standard Deviation"})
+                        bpm_df = bpm_df.T
+                        bpm_df = bpm_df.round(2)
+                        st.write(bpm_df)
+                        
+                    
+                #st.write(fig)
                 frame_placeholder.image(frame, channels="RGB")
         cap.release()
         cv2.destroyAllWindows()
-
+    st.markdown("### Detailed Data View")
 
 with tab3:
     markdownreader("Background.md")
