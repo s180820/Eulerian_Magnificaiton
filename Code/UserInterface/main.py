@@ -84,35 +84,13 @@ with tab2:
 
             webcam = cap
             realWidth = 500
-            realHeight = 
+            realHeight = 500
             videoWidth = 160
             videoHeight = 120
             videoChannels = 3
             videoFrameRate = 15
             webcam.set(3, realWidth)
             webcam.set(4, realHeight)
-
-            # Output Videos
-            if len(sys.argv) != 2:
-                originalVideoFilename = "original.mov"
-                originalVideoWriter = cv2.VideoWriter()
-                originalVideoWriter.open(
-                    originalVideoFilename,
-                    cv2.VideoWriter_fourcc("j", "p", "e", "g"),
-                    videoFrameRate,
-                    (realWidth, realHeight),
-                    True,
-                )
-
-            outputVideoFilename = "output.mov"
-            outputVideoWriter = cv2.VideoWriter()
-            outputVideoWriter.open(
-                outputVideoFilename,
-                cv2.VideoWriter_fourcc("j", "p", "e", "g"),
-                videoFrameRate,
-                (realWidth, realHeight),
-                True,
-            )
 
             # Color Magnification Parameters
             levels = 3
@@ -164,10 +142,6 @@ with tab2:
                 ret, frame = webcam.read()
                 if ret == False:
                     break
-
-                if len(sys.argv) != 2:
-                    originalFrame = frame.copy()
-                    originalVideoWriter.write(originalFrame)
 
                 (h, w) = frame.shape[:2]
                 blob = cv2.dnn.blobFromImage(
@@ -285,11 +259,9 @@ with tab2:
                         lineType,
                     )
 
-                outputVideoWriter.write(frame)
-
-                frame = cv2.cvtColor(
-                    frame, cv2.COLOR_BGR2RGB
-                )  # RGB Format to support streamlit
+                    frame = cv2.cvtColor(
+                        frame, cv2.COLOR_BGR2RGB
+                    )  # RGB Format to support streamlit
                 frame_placeholder.image(frame, channels="RGB")
         cap.release()
         cv2.destroyAllWindows()
