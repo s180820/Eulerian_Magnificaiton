@@ -259,9 +259,7 @@ with tab2:
                         lineType,
                     )
 
-                    frame = cv2.cvtColor(
-                        frame, cv2.COLOR_BGR2RGB
-                    )  # RGB Format to support streamlit
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Fix coloring issue
                 frame_placeholder.image(frame, channels="RGB")
         cap.release()
         cv2.destroyAllWindows()
