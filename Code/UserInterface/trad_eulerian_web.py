@@ -8,6 +8,9 @@ import numpy as np
 import cv2
 import sys
 
+PROTOTXT_PATH = "../../Models/Facial_recognition/deploy_prototxt.txt"
+MODEL_PATH = "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"
+
 
 # Helper Methods
 def buildGauss(frame, levels):
@@ -114,9 +117,7 @@ def start_video_feed(cap, display_pyramid=True):
     bpmBufferSize = 10
     bpmBuffer = np.zeros((bpmBufferSize))
 
-    network = cv2.dnn.readNetFromCaffe(
-        "deploy.prototxt.txt", "res10_300x300_ssd_iter_140000.caffemodel"
-    )
+    network = cv2.dnn.readNetFromCaffe(PROTOTXT_PATH, MODEL_PATH)
     startY = 0
     endY = 0
     startX = 0
@@ -172,6 +173,7 @@ def start_video_feed(cap, display_pyramid=True):
 
         # Construct Gaussian Pyramid
         pyramid = buildGauss(detectionFrame, levels + 1)[levels]
+        print(firstGauss.shape)
         # resize pyramid to fit videoGauss
         pyramid = cv2.resize(pyramid, (firstGauss.shape[0], firstGauss.shape[1]))
 

@@ -2,6 +2,9 @@
 import cv2
 import numpy as np
 import sys
+import concurrent.futures
+import queue
+import threading
 
 PROTOTXT_PATH = "../../Models/Facial_recognition/deploy_prototxt.txt"
 MODEL_PATH = "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"
@@ -17,8 +20,8 @@ class EulerianMagnification:
         Initialize the class instance of Eulerian magnification.
         """
         self.webcam = cap
-        self.realWidth = 320
-        self.realHeight = 240
+        self.realWidth = 500
+        self.realHeight = 600
         self.videoWidth = 160
         self.videoHeight = 120
         self.videoChannels = 3
@@ -44,6 +47,12 @@ class EulerianMagnification:
         self.lineType = 2
         self.boxColor = (0, 255, 0)
         self.boxWeight = 3
+
+        # Heart Rate Calculation Variables
+        self.bpmCalculationFrequency = 15
+        self.bpmBufferIndex = 0
+        self.bpmBufferSize = 10
+        self.bpmBuffer = np.zeros((self.bpmBufferSize))
 
     def detect_faces(self, network):
         """
@@ -73,6 +82,47 @@ class EulerianMagnification:
                 faces.append((startX, startY, endX, endY, confidence))
         return faces
 
+    def reconstructFrame(self, pyramid, index, videoWidth=160, videoHeight=120):
+        filteredFrame = pyramid[index]
+        for level in range(self.levels):
+            filteredFrame = cv2.pyrUp(filteredFrame)
+        filteredFrame = filteredFrame[:videoHeight, :videoWidth]
+        return filteredFrame
+
+    def gaussian_triangle_betch(self, detectionFrame, debugFace=None):
+        i = 0
+        fourierTransformAvg = np.zeros((self.bufferSize))
+        bpmBuffer = self.bpmBuffer
+        bpmBufferIdx = self.bpmBufferIndex
+        # Init pyramid for each face.
+        videoGauss, firstGauss = self.init_gauss_pyramid()
+        frequencies, mask = self.initBandPassFilter()
+        pyramid = self.buildGauss(detectionFrame)[self.levels]
+        print(pyramid.shape, debugFace[5])
+        pyramid = cv2.resize(pyramid, (firstGauss.shape[0], firstGauss.shape[1]))
+
+        videoGauss[self.bufferIdx] = pyramid
+        fourierTransform = np.fft.fft(videoGauss, axis=0)
+
+        # Apply bandpass filter
+        fourierTransform[mask == False] = 0
+
+        # Grab a pulse (GAP)
+
+        if self.bufferIdx % self.bpmCalculationFrequency == 0:
+            i += 1
+            for buf in range(self.bufferSize):
+                fourierTransformAvg[buf] = np.real(fourierTransform[buf]).mean()
+            hz = frequencies[np.argmax(fourierTransformAvg)]
+            bpm = 60.0 * hz
+            bpmBuffer[bpmBufferIdx] = bpm
+            bpmBufferIdx = (bpmBufferIdx + 1) % self.bpmBufferSize
+        # Amplify the signal
+        filtered = np.real(np.fft.ifft(fourierTransform, axis=0))
+        filtered = filtered * self.alpha
+
+        return filtered
+
     def apply_bbox(self, faces):
         """
         This function takes in a frame and a list of faces and draws bounding boxes
@@ -95,12 +145,33 @@ class EulerianMagnification:
             )
             cv2.imshow("Facial Tracking", self.frame)
 
+            # Frame of detection DEBUG ##############################################
+            debugFace = (
+                startX,
+                startY,
+                endX,
+                endY,
+                confidence,
+                faces.index((startX, startY, endX, endY, confidence)),
+            )
+
+            detectionFrame = self.frame[startY:endY, startX:endX, :]
+
     def buildGauss(self, firstframe):
         pyramid = [firstframe]
         for level in range(self.levels + 1):
             frame = cv2.pyrDown(firstframe)
             pyramid.append(frame)
         return pyramid
+
+    def initBandPassFilter(self):
+        frequencies = (
+            (1.0 * self.videoFrameRate)
+            * np.arange(self.bufferSize)
+            / (1.0 * self.bufferSize)
+        )
+        mask = (frequencies >= self.minFrequency) & (frequencies <= self.maxFrequency)
+        return frequencies, mask
 
     def init_gauss_pyramid(self):
         firstFrame = np.zeros((300, 300, self.videoChannels))
@@ -113,7 +184,7 @@ class EulerianMagnification:
                 self.videoChannels,
             )
         )
-        return videoGauss
+        return videoGauss, firstGauss
 
     def start_facial_tracking(self):
         """
@@ -136,7 +207,6 @@ class EulerianMagnification:
             cv2.imshow("Facial Tracking", self.frame)
 
             # TODO IMPLEMENT HEART RATE CALCULATION
-            videoGauss = self.init_gauss_pyramid()
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
