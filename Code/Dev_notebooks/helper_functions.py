@@ -62,7 +62,7 @@ class helper_functions:
                               continue
             return video_paths, ecg_paths, idx_paths, bb_data_paths
       
-      def bandpass_filter(data, lowcut = 0.05, highcut = 30.0, fs = 500, order=2):
+      def bandpass_filter(data, lowcut = 0.05, highcut = 100.0, fs = 500, order=2):
             nyquist = 0.5 * fs
             low = lowcut / nyquist
             high = highcut / nyquist
@@ -80,9 +80,9 @@ class helper_functions:
             true_ecg = ecg[ecg["Lead"] == "Lead II"][" ECG"].reset_index(drop=True) - ecg[ecg["Lead"] == "Lead I"][" ECG"].reset_index(drop=True)
             ecg_norm = (true_ecg - np.mean(true_ecg)) / np.std(true_ecg) # GUSTAV 
             #ecg_mv = helper_functions.moving_average(ecg_norm, 3) #moving average # GUSSE
-            #ecg_mv = helper_functions.bandpass_filter(ecg_norm, 0.1, 100)
+            ecg_mv = helper_functions.bandpass_filter(ecg_norm)
              # start at the first frame of video
-            return ecg_norm
+            return ecg_mv
       
       def fft_filter(video, freq_min, freq_max, fps):
             fft = fftpack.fft(video, axis=0)

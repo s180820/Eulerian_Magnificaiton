@@ -23,6 +23,7 @@ ipython_config.py
 
 # Remove previous ipynb_checkpoints
 #   git rm -r .ipynb_checkpoints/
+**.png
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
@@ -32,6 +33,8 @@ __pycache__/
 
 # C extensions
 *.so
+
+.nfs*
 
 # Distribution / packaging
 .Python
@@ -227,4 +230,9 @@ pip-selfcheck.json
 .history
 .ionide
 
+
+
+## Other datasets
+
+Bench_data/
 # End of https://www.toptal.com/developers/gitignore/api/virtualenv,python,jupyternotebooks,visualstudiocode
