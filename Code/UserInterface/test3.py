@@ -30,14 +30,8 @@ class EulerianMagnification:
         self.webcam.set(4, self.realHeight)
         self.Frame = None
 
-        self.exit_event = threading.Event()
-
-        self.thread_lock = threading.Lock()
         self.face_ids = {}
         self.current_face_id = 0
-        self.threads = {}  # Dictionary to store threads for each face
-        self.active_faces = set()  # Dictionary to store pause flags for each face
-        self.pause_flags = {}
         # Color magnification parameters
         self.levels = 3
         self.alpha = 170
@@ -45,6 +39,8 @@ class EulerianMagnification:
         self.maxFrequency = 2.0
         self.bufferSize = 150
         self.bufferIdx = 0
+
+        self.videoGauss, self.firstGauss = self.init_gauss_pyramid()
 
         # Output display parameters
         self.font = cv2.FONT_HERSHEY_SIMPLEX
@@ -144,46 +140,18 @@ class EulerianMagnification:
             face_center = ((startX + endX) // 2, (startY + endY) // 2)
             face_id = None
 
-            with self.thread_lock:
-                for id, center in self.face_ids.items():
-                    distance = (
-                        (face_center[0] - center[0]) ** 2
-                        + (face_center[1] - center[1]) ** 2
-                    ) ** 0.5
-                    if distance <= 90:
-                        face_id = id
-                        break
-                    else:
-                        # print("Face no longer present")
-                        self.pause_flags[face_id] = True
-                if face_id is None:
-                    face_id = self.current_face_id
-                    self.current_face_id += 1
-                    self.face_ids[face_id] = face_center
-                    thread = threading.Thread(target=self.process_face, args=(face_id,))
-                    thread.start()
-                    self.threads[face_id] = thread
-                    # self.active_faces.add(face_id)
-
-            # with self.thread_lock:
-            #     for id, center in self.face_ids.items():
-            #         distance = (
-            #             (face_center[0] - center[0]) ** 2
-            #             + (face_center[1] - center[1]) ** 2
-            #         ) ** 0.5
-            #         if distance <= 90:
-            #             face_id = id
-            #             break
-            #         else:
-            #             # Set the pause flag for faces that are no longer present
-            #             self.pause_flags[id] = True
-            #     if face_id is None:
-            #         face_id = self.current_face_id
-            #         self.current_face_id += 1
-            #         self.face_ids[face_id] = face_center
-            #         thread = threading.Thread(target=self.process_face, args=(face_id,))
-            #         thread.start()
-            #         self.threads[face_id] = thread
+            for id, center in self.face_ids.items():
+                distance = (
+                    (face_center[0] - center[0]) ** 2
+                    + (face_center[1] - center[1]) ** 2
+                ) ** 0.5
+                if distance <= 90:
+                    face_id = id
+                    break
+            if face_id is None:
+                face_id = self.current_face_id
+                self.current_face_id += 1
+                self.face_ids[face_id] = face_center
 
             text = f"Confidence: {confidence:.2f}, face_ID {face_id}"
             cv2.putText(
@@ -208,27 +176,6 @@ class EulerianMagnification:
             )
 
             detectionFrame = self.frame[startY:endY, startX:endX, :]
-
-    def process_face(self, face_id):
-        """
-        This function takes in a face id and processes the face for heart rate
-        calculation.
-
-        input: face_id
-        output: None
-        """
-        print("hi")
-        while face_id in self.threads and not self.exit_event.is_set():
-            if len(self.pause_flags) == 0:
-                pass
-            elif len(self.pause_flags) > 0:
-                continue
-            print(f"Processing face {face_id}, thread_ID {threading.get_ident()}")
-            # Simulate hard work
-            result = 0
-            for _ in range(10**7):
-                result += 1
-            time.sleep(0.5)
 
     def buildGauss(self, firstframe):
         pyramid = [firstframe]

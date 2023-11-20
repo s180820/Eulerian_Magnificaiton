@@ -30,14 +30,8 @@ class EulerianMagnification:
         self.webcam.set(4, self.realHeight)
         self.Frame = None
 
-        self.exit_event = threading.Event()
-
-        self.thread_lock = threading.Lock()
         self.face_ids = {}
         self.current_face_id = 0
-        self.threads = {}  # Dictionary to store threads for each face
-        self.active_faces = set()  # Dictionary to store pause flags for each face
-        self.pause_flags = {}
         # Color magnification parameters
         self.levels = 3
         self.alpha = 170
@@ -45,6 +39,8 @@ class EulerianMagnification:
         self.maxFrequency = 2.0
         self.bufferSize = 150
         self.bufferIdx = 0
+
+        self.videoGauss, self.firstGauss = self.init_gauss_pyramid()
 
         # Output display parameters
         self.font = cv2.FONT_HERSHEY_SIMPLEX
@@ -90,12 +86,17 @@ class EulerianMagnification:
                 faces.append((startX, startY, endX, endY, confidence))
         return faces
 
-    def reconstructFrame(self, pyramid, index, videoWidth=160, videoHeight=120):
-        filteredFrame = pyramid[index]
-        for level in range(self.levels):
-            filteredFrame = cv2.pyrUp(filteredFrame)
-        filteredFrame = filteredFrame[:videoHeight, :videoWidth]
-        return filteredFrame
+    def reconstruct_frame(self, pyramid):
+        reconstructed_frame = pyramid[self.levels]
+        for level in range(self.levels, 0, -1):
+            expanded = cv2.pyrUp(reconstructed_frame)
+            if expanded.shape[:2] != pyramid[level - 1].shape[:2]:
+                expanded = expanded[
+                    : pyramid[level - 1].shape[0], : pyramid[level - 1].shape[1]
+                ]
+            laplacian = cv2.subtract(pyramid[level - 1], expanded)
+            reconstructed_frame = laplacian
+        return reconstructed_frame
 
     def gaussian_triangle_betch(self, detectionFrame, debugFace=None):
         i = 0
@@ -132,58 +133,31 @@ class EulerianMagnification:
         return filtered
 
     def apply_bbox(self, faces):
-        """
-        This function takes in a frame and a list of faces and draws bounding boxes
-        around the faces.
-
-        input: frame, faces
-        output: None
-        """
         for startX, startY, endX, endY, confidence in faces:
             cv2.rectangle(self.frame, (startX, startY), (endX, endY), (0, 255, 0), 2)
             face_center = ((startX + endX) // 2, (startY + endY) // 2)
             face_id = None
 
-            with self.thread_lock:
-                for id, center in self.face_ids.items():
-                    distance = (
-                        (face_center[0] - center[0]) ** 2
-                        + (face_center[1] - center[1]) ** 2
-                    ) ** 0.5
-                    if distance <= 90:
-                        face_id = id
-                        break
-                    else:
-                        # print("Face no longer present")
-                        self.pause_flags[face_id] = True
-                if face_id is None:
-                    face_id = self.current_face_id
-                    self.current_face_id += 1
-                    self.face_ids[face_id] = face_center
-                    thread = threading.Thread(target=self.process_face, args=(face_id,))
-                    thread.start()
-                    self.threads[face_id] = thread
-                    # self.active_faces.add(face_id)
+            for id, center in self.face_ids.items():
+                distance = (
+                    (face_center[0] - center[0]) ** 2
+                    + (face_center[1] - center[1]) ** 2
+                ) ** 0.5
+                if distance <= 90:
+                    face_id = id
+                    break
 
-            # with self.thread_lock:
-            #     for id, center in self.face_ids.items():
-            #         distance = (
-            #             (face_center[0] - center[0]) ** 2
-            #             + (face_center[1] - center[1]) ** 2
-            #         ) ** 0.5
-            #         if distance <= 90:
-            #             face_id = id
-            #             break
-            #         else:
-            #             # Set the pause flag for faces that are no longer present
-            #             self.pause_flags[id] = True
-            #     if face_id is None:
-            #         face_id = self.current_face_id
-            #         self.current_face_id += 1
-            #         self.face_ids[face_id] = face_center
-            #         thread = threading.Thread(target=self.process_face, args=(face_id,))
-            #         thread.start()
-            #         self.threads[face_id] = thread
+            if face_id is None:
+                face_id = self.current_face_id
+                self.current_face_id += 1
+                self.face_ids[face_id] = face_center
+
+            # Apply Eulerian magnification to the detected face region
+            detection_frame = self.frame[startY:endY, startX:endX, :]
+            magnified_face = self.perform_eulerian_magnification(detection_frame)
+
+            # Replace the detected face region with the magnified face
+            self.frame[startY:endY, startX:endX, :] = magnified_face
 
             text = f"Confidence: {confidence:.2f}, face_ID {face_id}"
             cv2.putText(
@@ -198,7 +172,7 @@ class EulerianMagnification:
             cv2.imshow("Facial Tracking", self.frame)
 
             # Frame of detection DEBUG ##############################################
-            debugFace = (
+            debug_face = (
                 startX,
                 startY,
                 endX,
@@ -207,28 +181,30 @@ class EulerianMagnification:
                 faces.index((startX, startY, endX, endY, confidence)),
             )
 
-            detectionFrame = self.frame[startY:endY, startX:endX, :]
+            detection_frame = self.frame[startY:endY, startX:endX, :]
 
-    def process_face(self, face_id):
+    def perform_eulerian_magnification(self, detection_frame):
         """
-        This function takes in a face id and processes the face for heart rate
-        calculation.
+        This function takes in a frame and performs Eulerian magnification on the frame.
 
-        input: face_id
-        output: None
+        input: frame
+        output: magnified_frame
         """
-        print("hi")
-        while face_id in self.threads and not self.exit_event.is_set():
-            if len(self.pause_flags) == 0:
-                pass
-            elif len(self.pause_flags) > 0:
-                continue
-            print(f"Processing face {face_id}, thread_ID {threading.get_ident()}")
-            # Simulate hard work
-            result = 0
-            for _ in range(10**7):
-                result += 1
-            time.sleep(0.5)
+        # Build pyramid
+        pyramid = self.buildGauss(detection_frame)
+
+        # Reconstruct the frame using pyramid
+
+        reconstructed_frame = self.reconstruct_frame(pyramid=pyramid)
+
+        # Amplify
+        magnification_factor = 2
+        magnified_frame = reconstructed_frame * magnification_factor
+
+        # Ensure values
+        magnified_frame = np.clip(magnified_frame, 0, 255).astype(np.uint8)
+
+        return magnified_frame
 
     def buildGauss(self, firstframe):
         pyramid = [firstframe]
