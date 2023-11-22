@@ -68,16 +68,9 @@ class FacialRecognition:
         self.firstFrame = np.zeros((50, 50, self.videoChannels))
         self.firstGauss = self.buildGauss(self.firstFrame)[self.levels]
 
-        self.videoGauss = np.zeros(
-            (
-                self.bufferSize,
-                self.firstGauss.shape[0],
-                self.firstGauss.shape[1],
-                self.videoChannels,
-            )
-        )
+        self.videoGauss = {}
 
-        self.fourierTransformAvg = np.zeros((self.bufferSize))
+        self.fourierTransformAvg = {}
 
         self.frequencies = (
             (1.0 * self.videoFrameRate)
@@ -87,6 +80,7 @@ class FacialRecognition:
         self.mask = (self.frequencies >= self.minFrequency) & (
             self.frequencies <= self.maxFrequency
         )
+        self.i = 0
 
     def buildGauss(self, frame):
         pyramid = [frame]
@@ -101,14 +95,54 @@ class FacialRecognition:
         endX, endY = end_point
         return startY, endY, startX, endX
 
+    def grab_pulse(self, fourierTransform, face_id):
+        if face_id not in self.bpmBufferIndex:
+            print(f"[DEBUG - Pulse] {face_id} not found in bpmBufferIndex. Setting 0")
+            self.bpmBufferIndex[face_id] = 0
+        if self.bufferIdx[face_id] % self.bpmCalculationFrequency == 0:
+            self.i += 1
+            for buf in range(self.bufferSize):
+                self.fourierTransformAvg[face_id][buf] = np.real(
+                    fourierTransform[buf].mean()
+                )
+            hz = self.frequencies[np.argmax(self.fourierTransformAvg[face_id])]
+            bpm = 60 * hz
+            self.bpmBuffer[face_id][self.bpmBufferIndex[face_id]] = bpm
+            self.bpmBufferIndex[face_id] = (
+                self.bpmBufferIndex[face_id] + 1
+            ) % self.bpmBufferSize
+            return bpm
+
     def eulerian_magnification(
         self, detectionframe, startY, endY, startX, endX, face_id
     ):
-        print(f"[DEBUG] Performing eulerian Magnification for {face_id}")
+        # print(f"[DEBUG - Eulerian] Performing eulerian Magnification for {face_id}")
         pyramid = self.buildGauss(detectionframe)[self.levels]
         pyramid = cv2.resize(
             pyramid, (self.firstGauss.shape[0], self.firstGauss.shape[1])
         )
+
+        if face_id not in self.bufferIdx:
+            print(f"[DEBUG - Eulerian] {face_id} not found in bufferIdx. Setting 0")
+            self.bufferIdx[face_id] = 0
+            self.videoGauss[face_id] = np.zeros(
+                (
+                    self.bufferSize,
+                    self.firstGauss.shape[0],
+                    self.firstGauss.shape[1],
+                    self.videoChannels,
+                )
+            )
+            self.fourierTransformAvg[face_id] = np.zeros((self.bufferSize))
+            self.bpmBuffer[face_id] = np.zeros((self.bpmBufferSize))
+        self.videoGauss[face_id][self.bufferIdx[face_id]] = pyramid
+
+        bpm = self.grab_pulse(
+            fourierTransform=self.fourierTransformAvg[face_id], face_id=face_id
+        )
+        print(f"[VERBOSE] Heartrate of person {face_id}: {bpm}")
+
+        self.bufferIdx[face_id] = (self.bufferIdx[face_id] + 1) % self.bufferSize
 
     def test_function_for_person(self, bbox, face_id):
         # Add your custom test function logic here
