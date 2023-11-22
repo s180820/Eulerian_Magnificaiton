@@ -1,3 +1,15 @@
+"""
+    Authors:
+        - Frederik Peetz-Schou Larsen
+        - Gustav Gamst Larsen
+
+    Year: 
+        - 2023
+    
+    Description: 
+        - As part of "Advanced Project in Digital Media Engineering" on DTU 
+"""
+
 import cv2
 import dlib
 import numpy as np
