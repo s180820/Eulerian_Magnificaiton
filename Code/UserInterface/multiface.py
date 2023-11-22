@@ -3,7 +3,64 @@ import dlib
 import numpy as np
 
 
-class FacialRecognition:
+class EulerianMagnification:
+    """
+        Class to perform concurrent eulerian magnification
+        on multiple faces in a video stream
+        Attributes:
+            detector: dlib face detector
+            predictor: dlib facial landmarks predictor
+            facerec: dlib face recognition model
+            face_encodings: dictionary to store face encodings
+            labels: dictionary to store face labels
+            cap: webcam object
+            frame_counter: counter to keep track of frames
+            realWidth: width of the webcam frame
+            realHeight: height of the webcam frame
+            videoWidth: width of the video frame
+            videoHeight: height of the video frame
+            videoChannels: number of channels in the video frame
+            videoFrameRate: frame rate of the video
+            frame: current frame
+            levels: number of levels in the gaussian pyramid
+            alpha: alpha value for color magnification
+            minFrequency: minimum frequency for color magnification
+            maxFrequency: maximum frequency for color magnification
+            bufferSize: size of the buffer
+            bufferIdx: dictionary to store buffer indices
+            font: font for the text
+            loadingTextLocation: location of the loading text
+            bpmTextLocation: location of the bpm text
+            fontScale: font scale
+            fontColor: font color
+            lineType: line type
+            boxColor: color of the bounding box
+            boxWeight: weight of the bounding box
+            bpmCalculationFrequency: frequency of bpm calculation
+            bpmBufferIndex: dictionary to store bpm buffer indices
+            bpmBufferSize: size of the bpm buffer
+            bpmBuffer: dictionary to store bpm buffers
+            BPMs: dictionary to store BPMs
+            firstFrame: first frame of the video
+            firstGauss: first gaussian pyramid
+            videoGauss: dictionary to store gaussian pyramids
+            fourierTransformAvg: dictionary to store fourier transforms
+            frequencies: frequencies for color magnification
+            mask: mask for color magnification
+            i: counter to keep track of frames
+
+        Methods:
+            buildGauss: builds a gaussian pyramid
+            unpack_coordinates: unpacks the bounding box coordinates
+            estimate_heart_rate
+    : grabs the pulse from the fourier transform
+            eulerian_magnification: performs eulerian magnification
+            runner: runs the eulerian magnification
+            recognize_faces: recognizes faces in the video stream
+
+
+    """
+
     def __init__(self):
         # Load the pre-trained face detection model from dlib
         self.detector = dlib.get_frontal_face_detector()
@@ -30,7 +87,7 @@ class FacialRecognition:
         # Variables
         self.frame_counter = 0
 
-        ## OLD
+        # Video variables
         self.realWidth = 500
         self.realHeight = 600
         self.videoWidth = 160
@@ -65,6 +122,8 @@ class FacialRecognition:
         self.bpmBufferSize = 10
         self.bpmBuffer = {}
 
+        self.BPMs = {}
+
         self.firstFrame = np.zeros((50, 50, self.videoChannels))
         self.firstGauss = self.buildGauss(self.firstFrame)[self.levels]
 
@@ -95,7 +154,7 @@ class FacialRecognition:
         endX, endY = end_point
         return startY, endY, startX, endX
 
-    def grab_pulse(self, fourierTransform, face_id):
+    def estimate_heart_rate(self, fourierTransform, face_id):
         if face_id not in self.bpmBufferIndex:
             print(f"[DEBUG - Pulse] {face_id} not found in bpmBufferIndex. Setting 0")
             self.bpmBufferIndex[face_id] = 0
@@ -122,6 +181,7 @@ class FacialRecognition:
             pyramid, (self.firstGauss.shape[0], self.firstGauss.shape[1])
         )
 
+        # Initialize fouierTransform avg, and videos to keep for each {face_id}
         if face_id not in self.bufferIdx:
             print(f"[DEBUG - Eulerian] {face_id} not found in bufferIdx. Setting 0")
             self.bufferIdx[face_id] = 0
@@ -135,17 +195,26 @@ class FacialRecognition:
             )
             self.fourierTransformAvg[face_id] = np.zeros((self.bufferSize))
             self.bpmBuffer[face_id] = np.zeros((self.bpmBufferSize))
+
+        # If already exist or just created -- Continue computing fft.
         self.videoGauss[face_id][self.bufferIdx[face_id]] = pyramid
 
-        bpm = self.grab_pulse(
-            fourierTransform=self.fourierTransformAvg[face_id], face_id=face_id
+        fourierTransform = np.fft.fft(self.videoGauss[face_id], axis=0)
+        fourierTransform[self.mask == False] = 0
+
+        bpm = self.estimate_heart_rate(
+            fourierTransform=fourierTransform, face_id=face_id
         )
-        print(f"[VERBOSE] Heartrate of person {face_id}: {bpm}")
+        # print(f"[VERBOSE] Heartrate of person {face_id}: {bpm}")
+        if face_id not in self.BPMs:
+            # initialize at 0
+            self.BPMs[face_id] = 0
+        if bpm is not None:
+            self.BPMs[face_id] = bpm
 
         self.bufferIdx[face_id] = (self.bufferIdx[face_id] + 1) % self.bufferSize
 
-    def test_function_for_person(self, bbox, face_id):
-        # Add your custom test function logic here
+    def runner(self, bbox, face_id):
         startY, endY, startX, endX = self.unpack_coordinates(bbox)
 
         detectionFrame = self.frame[startY:endY, startX:endX, :]
@@ -215,17 +284,29 @@ class FacialRecognition:
 
                     # Display the label
                     if match is not None:
+                        label_text = self.labels[match]
+                        bpm_text = f"BPM: {self.BPMs.get(match, 0)}"
                         cv2.putText(
                             self.frame,
-                            self.labels[match],
+                            label_text,
                             (bbox[0][0], bbox[0][1] - 10),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             0.9,
                             (0, 255, 0),
                             2,
                         )
-
-                        # Call the test function for the recognized person
+                        cv2.putText(
+                            self.frame,
+                            bpm_text,
+                            (
+                                bbox[0][0],
+                                bbox[1][1] + 20,
+                            ),  # Adjust the vertical position
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,  # Adjust the font scale
+                            (0, 255, 0),
+                            2,
+                        )
 
                     else:
                         cv2.putText(
@@ -240,7 +321,7 @@ class FacialRecognition:
 
                 # Process bounding boxes and face IDs as needed
                 for bbox, face_id in bounding_boxes:
-                    self.test_function_for_person(bbox=bbox, face_id=face_id)
+                    self.runner(bbox=bbox, face_id=face_id)
 
                 # Display the frame
                 cv2.imshow("Webcam", self.frame)
@@ -256,5 +337,5 @@ class FacialRecognition:
 
 if __name__ == "__main__":
     # Instantiate the class and run the facial recognition
-    facial_recognition = FacialRecognition()
-    facial_recognition.recognize_faces()
+    eulerian = EulerianMagnification()
+    eulerian.recognize_faces()  # Running method -- Will call concurrent methods to perform Eulerian Magnification
