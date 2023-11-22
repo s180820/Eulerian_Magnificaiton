@@ -25,10 +25,11 @@ class EulerianMagnification:
         self.videoWidth = 160
         self.videoHeight = 120
         self.videoChannels = 3
-        self.videoFrameRate = 15
+        self.videoFrameRate = 30
         self.webcam.set(3, self.realWidth)
         self.webcam.set(4, self.realHeight)
         self.Frame = None
+        self.detectionFrames = {}
 
         self.face_ids = {}
         self.current_face_id = 0
@@ -57,6 +58,37 @@ class EulerianMagnification:
         self.bpmBufferIndex = 0
         self.bpmBufferSize = 10
         self.bpmBuffer = np.zeros((self.bpmBufferSize))
+
+        self.firstFrame = np.zeros(
+            (50, 50, self.videoChannels)
+        )  # Set higher resolution for slower comp
+        self.firstGauss = self.buildGauss(self.firstFrame)[self.levels]
+        self.videoGauss = np.zeros(
+            (
+                self.bufferSize,
+                self.firstGauss.shape[0],
+                self.firstGauss.shape[1],
+                self.videoChannels,
+            )
+        )
+        self.fourierTransformAvg = np.zeros((self.bufferSize))
+
+        self.frequencies = (
+            (1.0 * self.videoFrameRate)
+            * np.arange(self.bufferSize)
+            / (1.0 * self.bufferSize)
+        )
+        self.mask = (self.frequencies >= self.minFrequency) & (
+            self.frequencies <= self.maxFrequency
+        )
+
+        # Heart rate calc variables.
+        self.bpmCalculationFrequency = 15
+        self.bpmBufferIndex = 0
+        self.bpmBufferSize = 10
+        self.bpmBuffer = np.zeros((self.bpmBufferSize))
+
+        self.i = 0
 
     def detect_faces(self, network):
         """
@@ -93,40 +125,6 @@ class EulerianMagnification:
         filteredFrame = filteredFrame[:videoHeight, :videoWidth]
         return filteredFrame
 
-    def gaussian_triangle_betch(self, detectionFrame, debugFace=None):
-        i = 0
-        fourierTransformAvg = np.zeros((self.bufferSize))
-        bpmBuffer = self.bpmBuffer
-        bpmBufferIdx = self.bpmBufferIndex
-        # Init pyramid for each face.
-        videoGauss, firstGauss = self.init_gauss_pyramid()
-        frequencies, mask = self.initBandPassFilter()
-        pyramid = self.buildGauss(detectionFrame)[self.levels]
-        # print(pyramid.shape, debugFace[5])
-        pyramid = cv2.resize(pyramid, (firstGauss.shape[0], firstGauss.shape[1]))
-
-        videoGauss[self.bufferIdx] = pyramid
-        fourierTransform = np.fft.fft(videoGauss, axis=0)
-
-        # Apply bandpass filter
-        fourierTransform[mask == False] = 0
-
-        # Grab a pulse (GAP)
-
-        if self.bufferIdx % self.bpmCalculationFrequency == 0:
-            i += 1
-            for buf in range(self.bufferSize):
-                fourierTransformAvg[buf] = np.real(fourierTransform[buf]).mean()
-            hz = frequencies[np.argmax(fourierTransformAvg)]
-            bpm = 60.0 * hz
-            bpmBuffer[bpmBufferIdx] = bpm
-            bpmBufferIdx = (bpmBufferIdx + 1) % self.bpmBufferSize
-        # Amplify the signal
-        filtered = np.real(np.fft.ifft(fourierTransform, axis=0))
-        filtered = filtered * self.alpha
-
-        return filtered
-
     def apply_bbox(self, faces):
         """
         This function takes in a frame and a list of faces and draws bounding boxes
@@ -153,6 +151,9 @@ class EulerianMagnification:
                 self.current_face_id += 1
                 self.face_ids[face_id] = face_center
 
+            ## Variable to track the faces
+            face_idx = faces.index((startX, startY, endX, endY, confidence))
+
             text = f"Confidence: {confidence:.2f}, face_ID {face_id}"
             cv2.putText(
                 self.frame,
@@ -172,10 +173,18 @@ class EulerianMagnification:
                 endX,
                 endY,
                 confidence,
-                faces.index((startX, startY, endX, endY, confidence)),
+                face_idx,
             )
 
             detectionFrame = self.frame[startY:endY, startX:endX, :]
+            self.detectionFrames[face_idx] = (
+                detectionFrame,
+                startX,
+                startY,
+                endX,
+                endY,
+            )
+            print("end")
 
     def buildGauss(self, firstframe):
         pyramid = [firstframe]
@@ -206,7 +215,46 @@ class EulerianMagnification:
         )
         return videoGauss, firstGauss
 
-    def start_facial_tracking(self):
+    def grab_pulse(self, fourierTransform):
+        if self.bufferIdx % self.bpmCalculationFrequency == 0:
+            self.i += 1
+            for buf in range(self.bufferSize):
+                self.fourierTransformAvg[buf] = np.real(fourierTransform[buf].mean())
+            hz = self.frequencies[np.argmax(self.fourierTransformAvg)]
+            bpm = 60 / hz
+            self.bpmBuffer[self.bpmBufferIndex] = bpm
+            self.bpmBufferIndex = (self.bpmBufferIndex + 1) % self.bpmBufferSize
+
+            return bpm
+
+    def eulerianMagnification(self, detectionFrame, startX, startY, endX, endY):
+        pyramid = self.buildGauss(detectionFrame)[self.levels]
+        pyramid = cv2.resize(
+            pyramid, (self.firstGauss.shape[0], self.firstGauss.shape[1])
+        )
+        self.videoGauss[self.bufferIdx] = pyramid
+        fourierTranform = np.fft.fft(self.videoGauss, axis=0)
+        fourierTranform[self.mask == False] = 0
+
+        bpm = self.grab_pulse(fourierTranform)
+
+        filtered = np.real(np.fft.ifft(fourierTranform, axis=0))
+        filtered = filtered * self.alpha
+
+        filteredFrame = self.reconstructFrame(
+            filtered,
+            self.bufferIdx,
+            videoHeight=endY - startY,
+            videoWidth=endX - startX,
+        )
+        filteredFrame = cv2.resize(filteredFrame, (endX - startX, endY - startY))
+        outputFrame = detectionFrame + filteredFrame
+        outputFrame = cv2.convertScaleAbs(outputFrame)
+        self.bufferIdx = (self.bufferIdx + 1) % self.bufferSize
+
+        return bpm, outputFrame
+
+    def start_facial_tracking(self, display_pyramid=True):
         """
         This function takes in a video capture object and starts facial tracking
         on the video.
@@ -228,6 +276,47 @@ class EulerianMagnification:
             cv2.imshow("Facial Tracking", self.frame)
 
             # TODO IMPLEMENT HEART RATE CALCULATION
+            (
+                detectionFrame,
+                startX,
+                startY,
+                endX,
+                endY,
+            ) = self.detectionFrames[0]
+            bpm, outputframe = self.eulerianMagnification(
+                detectionFrame, startX, startY, endX, endY
+            )
+
+            # if display_pyramid:
+            #     # print("Test")
+            #     cv2.rectangle(
+            #         self.frame,
+            #         (startX, startY),
+            #         (endX, endY),
+            #         self.boxColor,
+            #         self.boxWeight,
+            #     )
+            self.frame = None
+            if self.i > self.bpmBufferSize:
+                cv2.putText(
+                    self.frame,
+                    "BPM: %d" % self.bpmBuffer.mean(),
+                    self.bpmTextLocation,
+                    self.font,
+                    self.fontScale,
+                    self.fontColor,
+                    self.lineType,
+                )
+            else:
+                cv2.putText(
+                    self.frame,
+                    "Calculating BPM...",
+                    self.loadingTextLocation,
+                    self.font,
+                    self.fontScale,
+                    self.fontColor,
+                    self.lineType,
+                )
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 self.exit_event.set()

@@ -163,27 +163,6 @@ class EulerianMagnification:
                     thread = threading.Thread(target=self.process_face, args=(face_id,))
                     thread.start()
                     self.threads[face_id] = thread
-                    # self.active_faces.add(face_id)
-
-            # with self.thread_lock:
-            #     for id, center in self.face_ids.items():
-            #         distance = (
-            #             (face_center[0] - center[0]) ** 2
-            #             + (face_center[1] - center[1]) ** 2
-            #         ) ** 0.5
-            #         if distance <= 90:
-            #             face_id = id
-            #             break
-            #         else:
-            #             # Set the pause flag for faces that are no longer present
-            #             self.pause_flags[id] = True
-            #     if face_id is None:
-            #         face_id = self.current_face_id
-            #         self.current_face_id += 1
-            #         self.face_ids[face_id] = face_center
-            #         thread = threading.Thread(target=self.process_face, args=(face_id,))
-            #         thread.start()
-            #         self.threads[face_id] = thread
 
             text = f"Confidence: {confidence:.2f}, face_ID {face_id}"
             cv2.putText(

@@ -173,7 +173,7 @@ def start_video_feed(cap, display_pyramid=True):
 
         # Construct Gaussian Pyramid
         pyramid = buildGauss(detectionFrame, levels + 1)[levels]
-        print(firstGauss.shape)
+        # print(firstGauss.shape)
         # resize pyramid to fit videoGauss
         pyramid = cv2.resize(pyramid, (firstGauss.shape[0], firstGauss.shape[1]))
 
@@ -185,10 +185,12 @@ def start_video_feed(cap, display_pyramid=True):
 
         # Grab a Pulse
         if bufferIndex % bpmCalculationFrequency == 0:
+            print("yeet")
             i = i + 1
             for buf in range(bufferSize):
                 fourierTransformAvg[buf] = np.real(fourierTransform[buf]).mean()
             hz = frequencies[np.argmax(fourierTransformAvg)]
+            print(hz)
             bpm = 60.0 * hz
             bpmBuffer[bpmBufferIndex] = bpm
             bpmBufferIndex = (bpmBufferIndex + 1) % bpmBufferSize
