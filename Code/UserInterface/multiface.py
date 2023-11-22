@@ -1,46 +1,53 @@
-import numpy as np
 import cv2
-import sys
-
-PROTOTXT_PATH = "../../Models/Facial_recognition/deploy_prototxt.txt"
-MODEL_PATH = "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"
+import dlib
+import numpy as np
 
 
-# Helper Methods
-class EulerianMagnification:
-    """
-    This class implements Eulerian magnification on a video stream.
-    """
+class FacialRecognition:
+    def __init__(self):
+        # Load the pre-trained face detection model from dlib
+        self.detector = dlib.get_frontal_face_detector()
 
-    def __init__(self, cap) -> None:
-        """
-        Initialize the class instance of Eulerian magnification.
-        """
-        self.webcam = cap
+        # Load the facial landmarks predictor
+        self.predictor_path = (
+            "../../Models/Facial_recognition/shape_predictor_68_face_landmarks.dat"
+        )
+        self.predictor = dlib.shape_predictor(self.predictor_path)
+
+        # Load the pre-trained face recognition model
+        self.face_rec_model_path = (
+            "../../Models/Facial_recognition/dlib_face_recognition_resnet_model_v1.dat"
+        )
+        self.facerec = dlib.face_recognition_model_v1(self.face_rec_model_path)
+
+        # Create a dictionary to store face encodings and labels
+        self.face_encodings = {}
+        self.labels = {}
+
+        # Open the webcam
+        self.cap = cv2.VideoCapture(0)
+
+        # Variables
+        self.frame_counter = 0
+
+        ## OLD
         self.realWidth = 500
         self.realHeight = 600
         self.videoWidth = 160
         self.videoHeight = 120
         self.videoChannels = 3
         self.videoFrameRate = 30
-        self.webcam.set(3, self.realWidth)
-        self.webcam.set(4, self.realHeight)
-        self.Frame = None
-        self.detectionFrames = {}
+        self.cap.set(3, self.realWidth)
+        self.cap.set(4, self.realHeight)
+        self.frame = None
 
-        self.face_ids = {}
-        self.current_face_id = 0
         # Color magnification parameters
         self.levels = 3
         self.alpha = 170
         self.minFrequency = 1.0
         self.maxFrequency = 2.0
         self.bufferSize = 150
-        self.bufferIdx = 0
-
-        self.count = 0
-
-        # self.videoGauss, self.firstGauss = self.init_gauss_pyramid()
+        self.bufferIdx = {}
 
         # Output display parameters
         self.font = cv2.FONT_HERSHEY_SIMPLEX
@@ -54,44 +61,11 @@ class EulerianMagnification:
 
         # Heart Rate Calculation Variables
         self.bpmCalculationFrequency = 15
-        self.bpmBufferIndex = 0
+        self.bpmBufferIndex = {}
         self.bpmBufferSize = 10
-        self.bpmBuffer = np.zeros((self.bpmBufferSize))
+        self.bpmBuffer = {}
 
-        self.firstFrame = np.zeros(
-            (50, 50, self.videoChannels)
-        )  # Set higher resolution for slower comp
-        # self.firstGauss = self.buildGauss(self.firstFrame)[self.levels]
-        # self.videoGauss = np.zeros(
-        #     (
-        #         self.bufferSize,
-        #         self.firstGauss.shape[0],
-        #         self.firstGauss.shape[1],
-        #         self.videoChannels,
-        #     )
-        # )
-        self.fourierTransformAvg = np.zeros((self.bufferSize))
-
-        self.frequencies = (
-            (1.0 * self.videoFrameRate)
-            * np.arange(self.bufferSize)
-            / (1.0 * self.bufferSize)
-        )
-        self.mask = (self.frequencies >= self.minFrequency) & (
-            self.frequencies <= self.maxFrequency
-        )
-
-        # Heart rate calc variables.
-        self.bpmCalculationFrequency = 15
-        self.bpmBufferIndex = 0
-        self.bpmBufferSize = 10
-        self.bpmBuffer = np.zeros((self.bpmBufferSize))
-
-        self.i = 0
-        self.network = cv2.dnn.readNetFromCaffe(PROTOTXT_PATH, MODEL_PATH)
-
-        # Init EulerianMagnification
-        self.firstFrame = np.zeros((300, 300, self.videoChannels))
+        self.firstFrame = np.zeros((50, 50, self.videoChannels))
         self.firstGauss = self.buildGauss(self.firstFrame)[self.levels]
 
         self.videoGauss = np.zeros(
@@ -114,42 +88,6 @@ class EulerianMagnification:
             self.frequencies <= self.maxFrequency
         )
 
-    def compute_bbox(self, detections, h, w, i):
-        box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-        (startX, startY, endX, endY) = box.astype("int")
-        return (startX, startY, endX, endY)
-
-    def image_recog(self, frame):
-        (h, w) = frame.shape[:2]
-        blob = cv2.dnn.blobFromImage(
-            cv2.resize(frame, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0)
-        )
-        self.network.setInput(blob)
-        detections = self.network.forward()
-        self.count = 0
-
-        for i in range(0, detections.shape[2]):
-            confidence = detections[0, 0, i, 2]
-
-            if confidence < 0.5:
-                continue
-            self.count += 1
-            # compute bbox
-            (startX, startY, endX, endY) = self.compute_bbox(detections, h, w, i)
-
-            return startX, startY, endX, endY, confidence
-
-    def apply_bbox(self, box, frame, confidence):
-        startX, startY, endX, endY = box
-        text = "{:.2f}%".format(confidence * 100) + ", Count: " + str(self.count)
-        y = startY - 10 if startY - 10 > 10 else startY + 10
-        boxColor = (0, 255, 0)
-        boxWeight = 3
-        cv2.rectangle(frame, (startX, startY), (endX, endY), boxColor, boxWeight)
-        cv2.putText(
-            frame, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2
-        )
-
     def buildGauss(self, frame):
         pyramid = [frame]
         for level in range(self.levels + 1):
@@ -157,106 +95,132 @@ class EulerianMagnification:
             pyramid.append(frame)
         return pyramid
 
-    def grab_pulse(self, fourierTransform):
-        if self.bufferIdx % self.bpmCalculationFrequency == 0:
-            self.i += 1
-            for buf in range(self.bufferSize):
-                self.fourierTransformAvg[buf] = np.real(fourierTransform[buf].mean())
-            hz = self.frequencies[np.argmax(self.fourierTransformAvg)]
-            bpm = 60 * hz
-            self.bpmBuffer[self.bpmBufferIndex] = bpm
-            self.bpmBufferIndex = (self.bpmBufferIndex + 1) % self.bpmBufferSize
+    def unpack_coordinates(self, bbox):
+        start_point, end_point = bbox
+        startX, startY = start_point
+        endX, endY = end_point
+        return startY, endY, startX, endX
 
-            return bpm
-
-    def reconstructFrame(self, pyramid, index, videoWidth=160, videoHeight=120):
-        filteredFrame = pyramid[index]
-        for level in range(self.levels):
-            filteredFrame = cv2.pyrUp(filteredFrame)
-        filteredFrame = filteredFrame[:videoHeight, :videoWidth]
-        return filteredFrame
-
-    def eulerianMagnification(self, detectionFrame, startY, endY, startX, endX):
-        pyramid = self.buildGauss(detectionFrame)[self.levels]
+    def eulerian_magnification(
+        self, detectionframe, startY, endY, startX, endX, face_id
+    ):
+        print(f"[DEBUG] Performing eulerian Magnification for {face_id}")
+        pyramid = self.buildGauss(detectionframe)[self.levels]
         pyramid = cv2.resize(
             pyramid, (self.firstGauss.shape[0], self.firstGauss.shape[1])
         )
-        self.videoGauss[self.bufferIdx] = pyramid
-        fourierTranform = np.fft.fft(self.videoGauss, axis=0)
-        fourierTranform[self.mask == False] = 0
 
-        # Get bpm
-        bpm = self.grab_pulse(fourierTranform)
+    def test_function_for_person(self, bbox, face_id):
+        # Add your custom test function logic here
+        startY, endY, startX, endX = self.unpack_coordinates(bbox)
 
-        filtered = np.real(np.fft.ifft(fourierTranform, axis=0))
-        filtered = filtered * self.alpha
+        detectionFrame = self.frame[startY:endY, startX:endX, :]
 
-        filteredFrame = self.reconstructFrame(
-            filtered,
-            self.bufferIdx,
-            videoHeight=endY - startY,
-            videoWidth=endX - startX,
+        self.eulerian_magnification(
+            detectionframe=detectionFrame,
+            startY=startY,
+            startX=startX,
+            endY=endY,
+            endX=endX,
+            face_id=face_id,
         )
-        filteredFrame = cv2.resize(filteredFrame, (endX - startX, endY - startY))
 
-        outputFrame = detectionFrame + filteredFrame
-        outputFrame = cv2.convertScaleAbs(outputFrame)
-        self.bufferIdx = (self.bufferIdx + 1) % self.bufferSize
+        # print(f"Face ID: {face_id}, Bounding Box: {bbox}")
 
-        return bpm, outputFrame
-
-    def start_video_feed(self, display_pyramid=True):
-        """Start the video feed and calculate heart rate."""
-
+    def recognize_faces(self):
         while True:
-            ret, frame = self.webcam.read()
+            ret, self.frame = self.cap.read()
+            self.frame_counter += 1
 
-            if ret == False:
-                break
+            if self.frame_counter % 3 == 0:
+                # Convert the frame to grayscale for face detection
+                gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
 
-            # Get bbox of face
-            faceInfo = self.image_recog(frame)
+                # Detect faces in the frame
+                faces = self.detector(gray)
 
-            if faceInfo is not None:
-                startX, startY, endX, endY, confidence = faceInfo  # Correct indentation
-                # Detection frame
-                detectionFrame = frame[startY:endY, startX:endX, :]
-                self.apply_bbox((startX, startY, endX, endY), frame, confidence)
-                bpm, outputframe = self.eulerianMagnification(
-                    detectionFrame, startY, endY, startX, endX
-                )
+                # List to store bounding boxes and face IDs
+                bounding_boxes = []
 
-                if display_pyramid:
-                    print("hi")
-                    cv2.rectangle(
-                        frame,
-                        (startX, startY),
-                        (endX, endY),
-                        self.boxColor,
-                        self.boxWeight,
+                for face in faces:
+                    # Get facial landmarks
+                    shape = self.predictor(gray, face)
+
+                    # Get the face encoding
+                    face_encoding = self.facerec.compute_face_descriptor(
+                        self.frame, shape
                     )
 
-                # Display BPM around the bounding box
-                bpm_text = "BPM: %d" % self.bpmBuffer.mean()
-                bpm_text_location = (startX, endY + 20)  # Adjust Y coordinate as needed
-                cv2.putText(
-                    frame,
-                    bpm_text,
-                    bpm_text_location,
-                    self.font,
-                    self.fontScale,
-                    self.fontColor,
-                    self.lineType,
-                )
+                    # Check if the face matches any known face
+                    match = None
+                    for label, encoding in self.face_encodings.items():
+                        if (
+                            np.linalg.norm(np.array(encoding) - np.array(face_encoding))
+                            < 0.6
+                        ):  # You can adjust this threshold
+                            match = label
+                            break
 
-            if len(sys.argv) != 2:
-                cv2.imshow("Webcam Heart Rate Monitor", frame)
+                    # If the face is not recognized, assign a new label
+                    if match is None:
+                        label = len(self.face_encodings) + 1
+                        self.face_encodings[label] = face_encoding
+                        self.labels[label] = f"Person {label}"
+
+                    # Draw a rectangle around the face
+                    bbox = ((face.left(), face.top()), (face.right(), face.bottom()))
+                    bounding_boxes.append((bbox, match))
+
+                    cv2.rectangle(
+                        self.frame,
+                        bbox[0],
+                        bbox[1],
+                        (0, 255, 0),
+                        2,
+                    )
+
+                    # Display the label
+                    if match is not None:
+                        cv2.putText(
+                            self.frame,
+                            self.labels[match],
+                            (bbox[0][0], bbox[0][1] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.9,
+                            (0, 255, 0),
+                            2,
+                        )
+
+                        # Call the test function for the recognized person
+
+                    else:
+                        cv2.putText(
+                            self.frame,
+                            "Unknown",
+                            (bbox[0][0], bbox[0][1] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.9,
+                            (0, 255, 0),
+                            2,
+                        )
+
+                # Process bounding boxes and face IDs as needed
+                for bbox, face_id in bounding_boxes:
+                    self.test_function_for_person(bbox=bbox, face_id=face_id)
+
+                # Display the frame
+                cv2.imshow("Webcam", self.frame)
+
+                # Break the loop when 'q' is pressed
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
+        # Release the webcam and close all windows
+        self.cap.release()
+        cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
-    video = cv2.VideoCapture(0)
-    # video = cv2.VideoCapture("c920_00_02.avi")
-    mag = EulerianMagnification(video)
-    mag.start_video_feed(display_pyramid=False)
+    # Instantiate the class and run the facial recognition
+    facial_recognition = FacialRecognition()
+    facial_recognition.recognize_faces()
