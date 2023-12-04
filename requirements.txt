@@ -11,11 +11,13 @@ wandb
 matplotlib
 seaborn
 tqdm
-
+plotly
 # app
 tk
 streamlit
-
+camera
+streamlit-webrtc
+psutil
 #torch
 torch 
 torchvision 

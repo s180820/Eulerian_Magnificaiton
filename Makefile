@@ -3,7 +3,7 @@ install:
 
 run:
 	cd Code/Userinterface; \
-	streamlit run main_SL.py
+	streamlit run streamlit.py
 
 clean:
 	rm -rf .venv
