@@ -5,6 +5,7 @@ from MethodizedEulerian import EulerianMagnification
 from NeuralStyleTransferTransformer import LiveFeedWebcam
 import cv2
 from webcam_use import webcam_use
+from Video_upload import video_upload
 
 shelper = StreamlitHelper()
 st.markdown(
@@ -34,18 +35,9 @@ with st.sidebar:
         if video_file is not None:
             st.video(video_file)
         st.text("Select Method")
-        method = st.selectbox(
-            "Which algorithm do you want to use?",
-            (
-                "None",
-                "Traditional Eulerian Magnification",
-                "Custom implemented Eulerian Magnification",
-                "Deep Learning Frameworks",
-            ),
-        )
 
 
 if implementation == "Pre-recorded video":
-    st.title("Pre-recorded video")
+    video_upload()
 if implementation == "Live-Feed":
     webcam_use()
