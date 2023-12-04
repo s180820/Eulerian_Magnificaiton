@@ -558,8 +558,9 @@ with tab3:
     frame_placeholder2 = st.empty()
     #matplotlib.use('TkAgg')
     placeholder2 = st.empty()
+    y_range = st.slider("y_axis range:", value=(0,250), key="y_range")
     # Test
-    cap2 = cv2.VideoCapture("Validation/Validation_film.mp4")
+    cap2 = cv2.VideoCapture("Validation/val_vid.mp4")
     if start_button_pressed_2:
         while cap2.isOpened() and not stop_bottom_pressed_2:
             ret, frame = cap2.read()
@@ -622,6 +623,8 @@ with tab3:
             startX = 0
             endX = 0
 
+            FIXED_BOX = False
+
             fig = plt.figure()
             ax1 = fig.add_subplot(1,1,1)
             fps = cap2.get(cv2.CAP_PROP_FPS)
@@ -643,6 +646,20 @@ with tab3:
             data = np.array([range(1, 61), hr[:60].values, gt]).T
             #plot_df = pd.DataFrame([*range(1, 61), hr[:60].values, gt], columns=["Time", "BPM", "type"])
             plot_df = pd.DataFrame(data = data, columns=["Time", "BPM", "type"])
+            
+            # add HR_CNN and MTTS_CAN data
+            hr_cnn = np.load("../validate_models/bpmES_HR_CNN.npy")
+            mtts_can = np.load("../validate_models/bpmES_MTTS_CAN.npy")
+            #make df for HR_CNN
+            hr_cnn_df = pd.DataFrame([range(7, 61), hr_cnn, np.repeat("HR_CNN", 54)]).T
+            hr_cnn_df.columns = ["Time", "BPM", "type"]
+            #make df for MTTS_CAN
+            mtts_can_df = pd.DataFrame([range(7, 61), mtts_can, np.repeat("MTTS_CAN", 54)]).T
+            mtts_can_df.columns = ["Time", "BPM", "type"]
+            #concatenate all dataframes
+            plot_df = pd.concat([plot_df, hr_cnn_df, mtts_can_df])
+            plot_df = plot_df.reset_index(drop=True)
+            
             time_idx = 1
 
             i = 0
@@ -650,46 +667,52 @@ with tab3:
                 ret, frame = webcam.read()
                 if ret == False:
                     break
-
+                
                 (h, w) = frame.shape[:2]
-                blob = cv2.dnn.blobFromImage(
-                    cv2.resize(frame, (300, 300)),
-                    1.0,
-                    (300, 300),
-                    (104.0, 177.0, 123.0),
-                )
-                # Pass blot through network to perform facial detection
-                network.setInput(blob)
-                detections = network.forward()
-                count = 0
-
-                for i in range(0, detections.shape[2]):
-                    # Extract confidence assoficated with predictions.
-                    confidence = detections[0, 0, i, 2]
-
-                    # Filter based on confidence
-                    if confidence < 0.5:
-                        continue
-                    count += 1
-
-                    # compute BBOX
-                    box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                    (startX, startY, endX, endY) = box.astype("int")
-
-                    # Draw box
-                    text = "{:.2f}%".format(confidence * 100) + ", Count: " + str(count)
-                    y = startY - 10 if startY - 10 > 10 else startY + 10
-                    # cv2.rectangle(frame, (startX, startY),
-                    #               (endX, endY), (0, 255, 0), 2)
-                    cv2.putText(
-                        frame,
-                        text,
-                        (startX, y),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.45,
-                        (0, 255, 0),
-                        2,
+                if not FIXED_BOX:
+                    blob = cv2.dnn.blobFromImage(
+                        cv2.resize(frame, (300, 300)),
+                        1.0,
+                        (300, 300),
+                        (104.0, 177.0, 123.0),
                     )
+                    # Pass blot through network to perform facial detection
+                    network.setInput(blob)
+                    detections = network.forward()
+                    count = 0
+
+                    for i in range(0, detections.shape[2]):
+                        # Extract confidence assoficated with predictions.
+                        confidence = detections[0, 0, i, 2]
+
+                        # Filter based on confidence
+                        if confidence < 0.5:
+                            continue
+                        count += 1
+
+                        # compute BBOX
+                        box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                        (startX, startY, endX, endY) = box.astype("int")
+
+                        # Draw box
+                        text = "{:.2f}%".format(confidence * 100) + ", Count: " + str(count)
+                        y = startY - 10 if startY - 10 > 10 else startY + 10
+                        # cv2.rectangle(frame, (startX, startY),
+                        #               (endX, endY), (0, 255, 0), 2)
+                        cv2.putText(
+                            frame,
+                            text,
+                            (startX, y),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.45,
+                            (0, 255, 0),
+                            2,
+                        )
+                else:
+                    startX = 720
+                    startY = 150
+                    endX = 1120
+                    endY = 500
                 detectionFrame = frame[startY:endY, startX:endX, :]
                 # """
                 # Not an Option to update videoGauss, how do I make Video gauss able to take in different size frames?
@@ -801,14 +824,16 @@ with tab3:
                         st.image(frame, channels="RGB")
                     with fig_col2:
                         st.markdown("### BPM Statistics")
-                        bpm_df = pd.DataFrame(bpms_hist, columns=["BPM"])
+                        bpm_df = pd.DataFrame(bpms_hist, columns=["BPM_Eulerian"])
                         bpm_df = bpm_df.describe()
                         bpm_df = bpm_df.drop(["count", "min", "25%", "50%", "75%"])
                         bpm_df = bpm_df.rename(index={"mean": "Mean", "max": "Max", "std": "Standard Deviation"})
                         bpm_df = bpm_df.T
                         bpm_df = bpm_df.round(2)
                         st.write(bpm_df)
-                        fig = px.line(plot_df, x="Time", y="BPM", color="type", labels={"x": "Time", "y": "BPM"})
+                        fig = px.line(plot_df[plot_df["Time"].astype(int) > 6], x="Time", y="BPM", 
+                                      color="type", labels={"x": "Time", "y": "BPM"})
+                        fig.update_yaxes(range = [st.session_state.y_range[0], st.session_state.y_range[1]])
                         st.write(fig)
                         
                     
