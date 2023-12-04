@@ -318,9 +318,11 @@ with tab2:
     stop_bottom_pressed_2 = st.button("Stop video")
 
     frame_placeholder_2 = st.empty()
-
+    pyramid_toggle = st.checkbox("Show Pyramid in Video")
     video = cv2.VideoCapture(0)
-    placeholder_4 = st.empty()
+    placeholder_2 = st.empty()
+    # pyramid_toggle = st.toggle("Show pyramid in video", value=False)
+
     if start_button_pressed_2:
         while video.isOpened() and not stop_bottom_pressed_2:
             ret, frame = video.read()
@@ -338,18 +340,10 @@ with tab2:
                 st.write("The video capture has ended.")
                 break
 
+            mag.display_pyramid = pyramid_toggle
+
             # Process the frame using the EulerianMagnification class
             processed_frame = mag.process_frame(frame)
-
-            # Display the processed frame using st.image
-            # frame_placeholder4.image(
-            #     processed_frame, channels="BGR", use_column_width=True
-            # )
-
-            # # Event handling
-            # if st.button("Pyramid Off/On dev 2"):
-            #     mag.display_pyramid = not mag.display_pyramid
-
             # Check if the Stop button is pressed
             if stop_bottom_pressed_2:
                 st.write("Stopping the video feed.")
@@ -360,11 +354,11 @@ with tab2:
             bpm_values = mag.get_bpm_over_time()
             if len(bpm_values) > 200:
                 bpm_values = bpm_values[-200:]
-            with placeholder_4.container():
+            with placeholder_2.container():
                 fig_col1, fig_col2 = st.columns(2)
                 with fig_col1:
                     st.markdown("### BPM over time")
-                    st.image(frame, channels="BGR", use_column_width=True)
+                    frame_placeholder_2.image(processed_frame)
                 with fig_col2:
                     st.markdown("### BPM Statistics")
                     bpm_df = pd.DataFrame(bpm_values, columns=["BPM"])

@@ -15,7 +15,8 @@ plotly
 # app
 tk
 streamlit
-
+camera
+streamlit-webrtc
 #torch
 torch 
 torchvision 

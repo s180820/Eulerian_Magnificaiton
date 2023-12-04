@@ -13,7 +13,7 @@ class EulerianMagnification:
     This class implements Eulerian magnification on a video stream.
     """
 
-    def __init__(self, cap) -> None:
+    def __init__(self, cap=None) -> None:
         """
         Initialize the class instance of Eulerian magnification.
         """
@@ -24,8 +24,8 @@ class EulerianMagnification:
         self.videoHeight = 120
         self.videoChannels = 3
         self.videoFrameRate = 30
-        self.webcam.set(3, self.realWidth)
-        self.webcam.set(4, self.realHeight)
+        # self.webcam.set(3, self.realWidth)
+        # self.webcam.set(4, self.realHeight)
         self.Frame = None
         self.detectionFrames = {}
         self.display_pyramid = True
@@ -212,10 +212,9 @@ class EulerianMagnification:
         outputFrame = detectionFrame + filteredFrame
         outputFrame = cv2.convertScaleAbs(outputFrame)
         self.bufferIdx = (self.bufferIdx + 1) % self.bufferSize
-
         return bpm, outputFrame
 
-    def start_video_feed(self, display_pyramid=True):
+    def start_video_feed(self):
         """Start the video feed and calculate heart rate."""
 
         while True:
@@ -241,11 +240,6 @@ class EulerianMagnification:
                 detectionFrame, startY, endY, startX, endX
             )
 
-            if display_pyramid:
-                cv2.rectangle(
-                    frame, (startX, startY), (endX, endY), self.boxColor, self.boxWeight
-                )
-
             if len(sys.argv) != 2:
                 cv2.imshow("Traditional Eulerian Magnification", frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -257,7 +251,7 @@ class EulerianMagnification:
         """
         return self.bpmBuffer
 
-    def start_video_feed_streamlit(self, display_pyramid=True):
+    def start_video_feed_streamlit(self):
         """Start the video feed and calculate heart rate for Streamlit."""
 
         st.button("Pyramid Off/On dev")  # Placeholder for Pyramid Off/On button
@@ -286,10 +280,6 @@ class EulerianMagnification:
                         processed_frame, channels="RGB", use_column_width=True
                     )
 
-                    # Event handling
-                    if st.button("Pyramid Off/On dev"):
-                        self.display_pyramid = not self.display_pyramid
-
                     # Check if the Stop button is pressed
                     if st.button("Stop dev"):
                         video_started = False
@@ -316,12 +306,11 @@ class EulerianMagnification:
                 detection_frame, startY, endY, startX, endX
             )
 
+            # Add colorizing effect to the original frame
             if self.display_pyramid:
-                cv2.rectangle(
-                    frame, (startX, startY), (endX, endY), self.boxColor, self.boxWeight
-                )
+                frame[startY:endY, startX:endX, :] = output_frame
 
-            return frame  # Display the original frame with the bounding box
+            return frame  # Display the frame with the color filter
 
         # If face detection is not successful, return the original frame
         return frame
@@ -329,6 +318,5 @@ class EulerianMagnification:
 
 if __name__ == "__main__":
     video = cv2.VideoCapture(0)
-
     mag = EulerianMagnification(video)
-    mag.start_video_feed(display_pyramid=False)
+    mag.start_video_feed()
