@@ -10,8 +10,14 @@ import matplotlib
 import plotly.express as px  # interactive charts
 import tempfile
 
-st.set_page_config(page_title="Eulerian Magnification", page_icon=":eyeglasses:", layout="wide")
-tab1, tab2, tab3, tab4 = st.tabs(["Pre-recorded video", "Live feed", "Validation test", "About"])
+from MethodizedEulerian import EulerianMagnification
+
+st.set_page_config(
+    page_title="Eulerian Magnification", page_icon=":eyeglasses:", layout="wide"
+)
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["Pre-recorded video", "Live feed", "Validation test", "About", "Dev"]
+)
 
 PROTOTXT_PATH = "../../Models/Facial_recognition/deploy_prototxt.txt"
 MODEL_PATH = "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"
@@ -58,7 +64,7 @@ with tab1:
     markdownreader("Main.md")
     # Data uploade
     frame_placeholder = st.empty()
-    #matplotlib.use('TkAgg')
+    # matplotlib.use('TkAgg')
     placeholder = st.empty()
     data = st.file_uploader(" ", accept_multiple_files=False)
     if not data:
@@ -72,7 +78,7 @@ with tab1:
             if not ret:
                 st.write("The video capture has ended")
                 break
-            
+
             display_pyramid = True
             webcam = cap
             realWidth = 500
@@ -130,10 +136,10 @@ with tab1:
             endX = 0
 
             fig = plt.figure()
-            ax1 = fig.add_subplot(1,1,1)
+            ax1 = fig.add_subplot(1, 1, 1)
             fps = cap.get(cv2.CAP_PROP_FPS)
 
-            bpms=[]
+            bpms = []
 
             i = 0
             while True:
@@ -233,7 +239,7 @@ with tab1:
 
                 if display_pyramid:
                     frame[startY:endY, startX:endX, :] = outputFrame
-                
+
                 cv2.rectangle(
                     frame, (startX, startY), (endX, endY), boxColor, boxWeight
                 )
@@ -259,8 +265,8 @@ with tab1:
                     )
 
                 frame = cv2.cvtColor(
-                        frame, cv2.COLOR_BGR2RGB
-                    )  # RGB Format to support streamlit
+                    frame, cv2.COLOR_BGR2RGB
+                )  # RGB Format to support streamlit
                 bpms.append(bpmBuffer.mean())
                 if len(bpms) > 200:
                     bpms = bpms[-200:]
@@ -276,24 +282,33 @@ with tab1:
                     fig_col1, fig_col2 = st.columns(2)
                     with fig_col1:
                         st.markdown("### BPM over time")
-                        #fig = px.line(x=np.arange(len(bpms)), y=bpms, labels={"x": "Time", "y": "BPM"})
-                        #st.write(fig)
+                        # fig = px.line(x=np.arange(len(bpms)), y=bpms, labels={"x": "Time", "y": "BPM"})
+                        # st.write(fig)
                         st.image(frame, channels="RGB")
                     with fig_col2:
                         st.markdown("### BPM Statistics")
                         bpm_df = pd.DataFrame(bpms, columns=["BPM"])
                         bpm_df = bpm_df.describe()
                         bpm_df = bpm_df.drop(["count", "min", "25%", "50%", "75%"])
-                        bpm_df = bpm_df.rename(index={"mean": "Mean", "max": "Max", "std": "Standard Deviation"})
+                        bpm_df = bpm_df.rename(
+                            index={
+                                "mean": "Mean",
+                                "max": "Max",
+                                "std": "Standard Deviation",
+                            }
+                        )
                         bpm_df = bpm_df.T
                         bpm_df = bpm_df.round(2)
                         st.write(bpm_df)
-                        fig = px.line(x=np.arange(len(bpms)), y=bpms, labels={"x": "Frame", "y": "BPM"})
+                        fig = px.line(
+                            x=np.arange(len(bpms)),
+                            y=bpms,
+                            labels={"x": "Frame", "y": "BPM"},
+                        )
                         st.write(fig)
-                        
-                    
-                #st.write(fig)
-                #frame_placeholder.image(frame, channels="RGB")
+
+                # st.write(fig)
+                # frame_placeholder.image(frame, channels="RGB")
         cap.release()
         cv2.destroyAllWindows()
 
@@ -306,7 +321,7 @@ with tab2:
     stop_bottom_pressed = st.button("Stop")
 
     frame_placeholder = st.empty()
-    #matplotlib.use('TkAgg')
+    # matplotlib.use('TkAgg')
     placeholder = st.empty()
 
     if start_button_pressed:
@@ -379,10 +394,10 @@ with tab2:
             endX = 0
 
             fig = plt.figure()
-            ax1 = fig.add_subplot(1,1,1)
+            ax1 = fig.add_subplot(1, 1, 1)
             fps = cap.get(cv2.CAP_PROP_FPS)
 
-            bpms=[]
+            bpms = []
 
             i = 0
             while True:
@@ -482,7 +497,7 @@ with tab2:
 
                 if display_pyramid:
                     frame[startY:endY, startX:endX, :] = outputFrame
-                
+
                 cv2.rectangle(
                     frame, (startX, startY), (endX, endY), boxColor, boxWeight
                 )
@@ -508,8 +523,8 @@ with tab2:
                     )
 
                 frame = cv2.cvtColor(
-                        frame, cv2.COLOR_BGR2RGB
-                    )  # RGB Format to support streamlit
+                    frame, cv2.COLOR_BGR2RGB
+                )  # RGB Format to support streamlit
                 bpms.append(bpmBuffer.mean())
                 if len(bpms) > 200:
                     bpms = bpms[-200:]
@@ -525,25 +540,34 @@ with tab2:
                     fig_col1, fig_col2 = st.columns(2)
                     with fig_col1:
                         st.markdown("### BPM over time")
-                        #fig = px.line(x=np.arange(len(bpms)), y=bpms, labels={"x": "Time", "y": "BPM"})
-                        #st.write(fig)
+                        # fig = px.line(x=np.arange(len(bpms)), y=bpms, labels={"x": "Time", "y": "BPM"})
+                        # st.write(fig)
                         st.image(frame, channels="RGB")
                     with fig_col2:
                         st.markdown("### BPM Statistics")
                         bpm_df = pd.DataFrame(bpms, columns=["BPM"])
                         bpm_df = bpm_df.describe()
                         bpm_df = bpm_df.drop(["count", "min", "25%", "50%", "75%"])
-                        bpm_df = bpm_df.rename(index={"mean": "Mean", "max": "Max", "std": "Standard Deviation"})
+                        bpm_df = bpm_df.rename(
+                            index={
+                                "mean": "Mean",
+                                "max": "Max",
+                                "std": "Standard Deviation",
+                            }
+                        )
                         bpm_df = bpm_df.T
                         bpm_df = bpm_df.round(2)
                         st.write(bpm_df)
-                        #st.markdown("### BPM over time")
-                        fig = px.line(x=np.arange(len(bpms)), y=bpms, labels={"x": "Time", "y": "BPM"})
+                        # st.markdown("### BPM over time")
+                        fig = px.line(
+                            x=np.arange(len(bpms)),
+                            y=bpms,
+                            labels={"x": "Time", "y": "BPM"},
+                        )
                         st.write(fig)
-                        
-                    
-                #st.write(fig)
-                #frame_placeholder.image(frame, channels="RGB")
+
+                # st.write(fig)
+                # frame_placeholder.image(frame, channels="RGB")
         cap.release()
         cv2.destroyAllWindows()
     st.markdown("### Detailed Data View")
@@ -556,7 +580,7 @@ with tab3:
     stop_bottom_pressed_2 = st.button("Stop Test")
 
     frame_placeholder2 = st.empty()
-    #matplotlib.use('TkAgg')
+    # matplotlib.use('TkAgg')
     placeholder2 = st.empty()
     # Test
     cap2 = cv2.VideoCapture("Validation/Validation_film.mp4")
@@ -623,26 +647,26 @@ with tab3:
             endX = 0
 
             fig = plt.figure()
-            ax1 = fig.add_subplot(1,1,1)
+            ax1 = fig.add_subplot(1, 1, 1)
             fps = cap2.get(cv2.CAP_PROP_FPS)
 
-            bpms=[]
+            bpms = []
             bpms_hist = []
             bpms_second = [0]
 
-            #calculate ground truth bpm
-            rr = pd.read_csv('Validation/P1LC1_Mobi_RR-intervals.rr', header=None)
-            #split data column into two columns
-            rr = rr[0].str.split(' ', expand=True)
-            rr = rr.rename(columns={0:'time', 1:'rr'})
-            hr = 60/rr['rr'].astype(float)
+            # calculate ground truth bpm
+            rr = pd.read_csv("Validation/P1LC1_Mobi_RR-intervals.rr", header=None)
+            # split data column into two columns
+            rr = rr[0].str.split(" ", expand=True)
+            rr = rr.rename(columns={0: "time", 1: "rr"})
+            hr = 60 / rr["rr"].astype(float)
             # repeat "Ground Truth" for 60 times
             gt = np.repeat("Ground Truth", 60)
 
-            # create dataframe for plot 
+            # create dataframe for plot
             data = np.array([range(1, 61), hr[:60].values, gt]).T
-            #plot_df = pd.DataFrame([*range(1, 61), hr[:60].values, gt], columns=["Time", "BPM", "type"])
-            plot_df = pd.DataFrame(data = data, columns=["Time", "BPM", "type"])
+            # plot_df = pd.DataFrame([*range(1, 61), hr[:60].values, gt], columns=["Time", "BPM", "type"])
+            plot_df = pd.DataFrame(data=data, columns=["Time", "BPM", "type"])
             time_idx = 1
 
             i = 0
@@ -741,9 +765,9 @@ with tab3:
 
                 bufferIndex = (bufferIndex + 1) % bufferSize
 
-                #if display_pyramid:
+                # if display_pyramid:
                 frame[startY:endY, startX:endX, :] = outputFrame
-                
+
                 cv2.rectangle(
                     frame, (startX, startY), (endX, endY), boxColor, boxWeight
                 )
@@ -769,17 +793,19 @@ with tab3:
                     )
 
                 frame = cv2.cvtColor(
-                        frame, cv2.COLOR_BGR2RGB
-                    )  # RGB Format to support streamlit
+                    frame, cv2.COLOR_BGR2RGB
+                )  # RGB Format to support streamlit
                 bpms.append(bpmBuffer.mean())
                 bpms_hist.append(bpmBuffer.mean())
-                #if len(bpms) > 200:
-                 #   bpms = bpms[-200:]
+                # if len(bpms) > 200:
+                #   bpms = bpms[-200:]
                 # get hr for each second
                 if len(bpms) > 30:
                     bpm = np.mean(bpms[-30:])
                     bpms_second.append(bpm)
-                    new_row = pd.DataFrame([[time_idx, bpm, "Eulerian"]], columns=["Time", "BPM", "type"])
+                    new_row = pd.DataFrame(
+                        [[time_idx, bpm, "Eulerian"]], columns=["Time", "BPM", "type"]
+                    )
                     plot_df = pd.concat([plot_df, new_row])
                     time_idx += 1
                     bpms = []
@@ -795,31 +821,86 @@ with tab3:
                     fig_col1, fig_col2 = st.columns(2)
                     with fig_col1:
                         st.markdown("### BPM over time")
-                        #fig = px.line(x=np.arange(len(bpms_second)), y=bpms_second, labels={"x": "Time", "y": "BPM"})
-                        #fig = px.line(plot_df, x="Time", y="BPM", color="type", labels={"x": "Time", "y": "BPM"})
-                        #st.write(fig)
+                        # fig = px.line(x=np.arange(len(bpms_second)), y=bpms_second, labels={"x": "Time", "y": "BPM"})
+                        # fig = px.line(plot_df, x="Time", y="BPM", color="type", labels={"x": "Time", "y": "BPM"})
+                        # st.write(fig)
                         st.image(frame, channels="RGB")
                     with fig_col2:
                         st.markdown("### BPM Statistics")
                         bpm_df = pd.DataFrame(bpms_hist, columns=["BPM"])
                         bpm_df = bpm_df.describe()
                         bpm_df = bpm_df.drop(["count", "min", "25%", "50%", "75%"])
-                        bpm_df = bpm_df.rename(index={"mean": "Mean", "max": "Max", "std": "Standard Deviation"})
+                        bpm_df = bpm_df.rename(
+                            index={
+                                "mean": "Mean",
+                                "max": "Max",
+                                "std": "Standard Deviation",
+                            }
+                        )
                         bpm_df = bpm_df.T
                         bpm_df = bpm_df.round(2)
                         st.write(bpm_df)
-                        fig = px.line(plot_df, x="Time", y="BPM", color="type", labels={"x": "Time", "y": "BPM"})
+                        fig = px.line(
+                            plot_df,
+                            x="Time",
+                            y="BPM",
+                            color="type",
+                            labels={"x": "Time", "y": "BPM"},
+                        )
                         st.write(fig)
-                        
-                    
-                #st.write(fig)
-                #frame_placeholder2.image(frame, channels="RGB")
+
+                # st.write(fig)
+                # frame_placeholder2.image(frame, channels="RGB")
         cap2.release()
         cv2.destroyAllWindows()
     st.markdown("### Detailed Data View")
 
 
-
-
 with tab4:
     markdownreader("Background.md")
+
+with tab5:
+    start_button_pressed_4 = st.button("Start dev")
+
+    stop_bottom_pressed_4 = st.button("Stop dev")
+
+    frame_placeholder4 = st.empty()
+    placeholder4 = st.empty()
+
+    if start_button_pressed_4:
+        # pyramid_button_4 = st.button("Pyramid Off/On dev2")
+        # # Test
+        # if pyramid_button_4:
+        #     display_pyramid_4 = True
+        # if not pyramid_button_4:
+        #     display_pyramid_4 = False
+
+        # Create an instance of EulerianMagnification
+        video = cv2.VideoCapture(0)
+        mag = EulerianMagnification(video)
+
+        # Streamlit loop to continuously update frames
+        while video.isOpened() and not stop_bottom_pressed_4:
+            ret, frame = video.read()
+
+            if not ret:
+                st.write("The video capture has ended.")
+                break
+
+            # Process the frame using the EulerianMagnification class
+            processed_frame = mag.process_frame(frame)
+
+            # Display the processed frame using st.image
+            frame_placeholder4.image(
+                processed_frame, channels="BGR", use_column_width=True
+            )
+
+            # # Event handling
+            # if st.button("Pyramid Off/On dev 2"):
+            #     mag.display_pyramid = not mag.display_pyramid
+
+            # Check if the Stop button is pressed
+            if stop_bottom_pressed_4:
+                st.write("Stopping the video feed.")
+                video.release()
+                break

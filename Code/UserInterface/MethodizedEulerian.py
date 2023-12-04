@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import sys
+import streamlit as st
 
 PROTOTXT_PATH = "../../Models/Facial_recognition/deploy_prototxt.txt"
 MODEL_PATH = "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"
@@ -27,6 +28,7 @@ class EulerianMagnification:
         self.webcam.set(4, self.realHeight)
         self.Frame = None
         self.detectionFrames = {}
+        self.display_pyramid = True
 
         self.face_ids = {}
         self.current_face_id = 0
@@ -47,7 +49,6 @@ class EulerianMagnification:
         self.loadingTextLocation = (20, 30)
         self.bpmTextLocation = (self.videoWidth // 2 + 5, 30)
         self.fontScale = 1
-        self.fontColor = (255, 255, 255)
         self.lineType = 2
         self.boxColor = (0, 255, 0)
         self.boxWeight = 3
@@ -58,18 +59,7 @@ class EulerianMagnification:
         self.bpmBufferSize = 10
         self.bpmBuffer = np.zeros((self.bpmBufferSize))
 
-        self.firstFrame = np.zeros(
-            (50, 50, self.videoChannels)
-        )  # Set higher resolution for slower comp
-        # self.firstGauss = self.buildGauss(self.firstFrame)[self.levels]
-        # self.videoGauss = np.zeros(
-        #     (
-        #         self.bufferSize,
-        #         self.firstGauss.shape[0],
-        #         self.firstGauss.shape[1],
-        #         self.videoChannels,
-        #     )
-        # )
+        self.firstFrame = np.zeros((50, 50, self.videoChannels))
         self.fourierTransformAvg = np.zeros((self.bufferSize))
 
         self.frequencies = (
@@ -139,13 +129,22 @@ class EulerianMagnification:
 
             return startX, startY, endX, endY, confidence
 
-    def apply_bbox(self, box, frame, confidence):
+    def apply_bbox(self, box, frame, confidence, BPM):
         startX, startY, endX, endY = box
-        text = "{:.2f}%".format(confidence * 100) + ", Count: " + str(self.count)
+        if self.i > self.bpmBufferSize:
+            if BPM > 190 or BPM > 40 and confidence * 100 > 50:
+                text = "Confidence: {:.2f}%".format(
+                    confidence * 100
+                ) + "   BPM: {}".format(int(BPM))
+        else:
+            text = (
+                "Confidence: {:.2f}%".format(confidence * 100)
+                + "   BPM: Calculating..."
+            )
         y = startY - 10 if startY - 10 > 10 else startY + 10
-        boxColor = (0, 255, 0)
-        boxWeight = 3
-        cv2.rectangle(frame, (startX, startY), (endX, endY), boxColor, boxWeight)
+        cv2.rectangle(
+            frame, (startX, startY), (endX, endY), self.boxColor, self.boxWeight
+        )
         cv2.putText(
             frame, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2
         )
@@ -218,7 +217,12 @@ class EulerianMagnification:
             startX, startY, endX, endY, confidence = self.image_recog(frame)
             # Apply
             # print(confidence)
-            self.apply_bbox((startX, startY, endX, endY), frame, confidence)
+            self.apply_bbox(
+                (startX, startY, endX, endY),
+                frame,
+                confidence,
+                BPM=self.bpmBuffer.mean(),
+            )
 
             # Detection frame
             detectionFrame = frame[startY:endY, startX:endX, :]
@@ -230,36 +234,84 @@ class EulerianMagnification:
                 cv2.rectangle(
                     frame, (startX, startY), (endX, endY), self.boxColor, self.boxWeight
                 )
-            if self.i > self.bpmBufferSize:
-                print(self.i)
-                cv2.putText(
-                    frame,
-                    "BPM: %d" % self.bpmBuffer.mean(),
-                    self.bpmTextLocation,
-                    self.font,
-                    self.fontScale,
-                    self.fontColor,
-                    self.lineType,
-                )
-            else:
-                cv2.putText(
-                    frame,
-                    "Calculating BPM...",
-                    self.loadingTextLocation,
-                    self.font,
-                    self.fontScale,
-                    self.fontColor,
-                    self.lineType,
-                )
 
             if len(sys.argv) != 2:
-                cv2.imshow("Webcam Heart Rate Monitor", frame)
+                cv2.imshow("Traditional Eulerian Magnification", frame)
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
+
+    def start_video_feed_streamlit(self, display_pyramid=True):
+        """Start the video feed and calculate heart rate for Streamlit."""
+
+        st.button("Pyramid Off/On dev")  # Placeholder for Pyramid Off/On button
+
+        video_placeholder = st.empty()
+
+        video_started = False
+
+        while True:
+            # Check if the Start button is pressed
+            if st.button("Start dev") and not video_started:
+                video_started = True
+                st.write("Video stream started!")
+
+                while True:
+                    ret, frame = self.webcam.read()
+
+                    if not ret:
+                        st.write("The video capture has ended.")
+                        break
+
+                    processed_frame = self.process_frame(frame)
+
+                    # Display the processed frame
+                    video_placeholder.image(
+                        processed_frame, channels="BGR", use_column_width=True
+                    )
+
+                    # Event handling
+                    if st.button("Pyramid Off/On dev"):
+                        self.display_pyramid = not self.display_pyramid
+
+                    # Check if the Stop button is pressed
+                    if st.button("Stop dev"):
+                        video_started = False
+                        st.write("Stopping the video feed.")
+                        break
+
+            # Wait for a short duration to avoid high CPU usage
+            st.experimental_rerun()
+
+    def process_frame(self, frame):
+        detection_result = self.image_recog(frame)
+
+        if detection_result is not None:
+            startX, startY, endX, endY, confidence = detection_result
+            self.apply_bbox(
+                (startX, startY, endX, endY),
+                frame,
+                confidence,
+                BPM=self.bpmBuffer.mean(),
+            )
+
+            detection_frame = frame[startY:endY, startX:endX, :]
+            bpm, output_frame = self.eulerianMagnification(
+                detection_frame, startY, endY, startX, endX
+            )
+
+            if self.display_pyramid:
+                cv2.rectangle(
+                    frame, (startX, startY), (endX, endY), self.boxColor, self.boxWeight
+                )
+
+            return frame  # Display the original frame with the bounding box
+
+        # If face detection is not successful, return the original frame
+        return frame
 
 
 if __name__ == "__main__":
     video = cv2.VideoCapture(0)
-    # video = cv2.VideoCapture("c920_00_02.avi")
+
     mag = EulerianMagnification(video)
     mag.start_video_feed(display_pyramid=False)
