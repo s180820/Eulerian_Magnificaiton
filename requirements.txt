@@ -11,7 +11,7 @@ wandb
 matplotlib
 seaborn
 tqdm
-
+plotly
 # app
 tk
 streamlit
