@@ -300,7 +300,7 @@ def demo():
                     st.write(bpm_df)
                     fig = px.line(plot_df[plot_df["Time"].astype(int) > 6], x="Time", y="BPM", 
                                     color="type", labels={"x": "Time", "y": "BPM"})
-                    fig.update_yaxes(range = [st.session_state.y_range[0], st.session_state.y_range[1]])
+                    #fig.update_yaxes(range = [st.session_state.y_range[0], st.session_state.y_range[1]])
                     st.write(fig)
                     
                 
@@ -308,4 +308,3 @@ def demo():
             #frame_placeholder2.image(frame, channels="RGB")
     cap2.release()
     cv2.destroyAllWindows()
-    webrtc_streamer(key="example", video_frame_callback=callback)

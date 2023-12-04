@@ -2,6 +2,7 @@ import streamlit as st
 from streamlithelper import StreamlitHelper
 from webcam_use import webcam_use
 from demo import demo
+from Video_upload import video_upload
 
 shelper = StreamlitHelper()
 st.markdown(
@@ -40,12 +41,14 @@ with st.sidebar:
                 "Deep Learning Frameworks",
             ),
         )
-    if implementation == "Demo":
-        demo()
+    #if implementation == "Demo":
+     #   demo()
 
 
 
 if implementation == "Pre-recorded video":
-    st.title("Pre-recorded video")
+    video_upload()
 if implementation == "Live-Feed":
     webcam_use()
+if implementation == "Demo":
+    demo()
