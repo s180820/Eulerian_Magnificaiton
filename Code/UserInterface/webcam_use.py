@@ -3,7 +3,6 @@ from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, ClientSettin
 import threading
 import cv2
 import numpy as np
-from PIL import Image
 import av
 from MethodizedEulerian import EulerianMagnification
 
@@ -22,8 +21,26 @@ def webcam_use():
         ),
     )
 
+    # Sliders for brightness and contrast
+    brightness = st.sidebar.slider(
+        "Brightness",
+        min_value=-100,
+        max_value=100,
+        value=0,
+    )
+    contrast = st.sidebar.slider(
+        "Contrast",
+        min_value=0.1,
+        max_value=3.0,
+        value=1.0,
+        step=0.1,
+    )
+
     def callback(frame):
         img = frame.to_ndarray(format="bgr24")
+        # Apply brightness, color changes, and contrast adjustments
+        adjusted_frame = cv2.convertScaleAbs(img, alpha=contrast, beta=brightness)
+        img = adjusted_frame
         if METHOD == "Deep Learning Frameworks":
             # Convert to grayscale
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -38,11 +55,10 @@ def webcam_use():
             new_frame = av.VideoFrame.from_ndarray(gray_bgr, format="bgr24")
         elif METHOD == "Traditional Eulerian Magnification":
             # Perform eulerian magnification using the class and display the output.
-
-            processed_frame = magnification_processor.process_frame(img)
+            processed_frame = magnification_processor.process_frame(adjusted_frame)
             new_frame = av.VideoFrame.from_ndarray(processed_frame, format="bgr24")
         else:
-            new_frame = av.VideoFrame.from_ndarray(img, format="bgr24")
+            new_frame = av.VideoFrame.from_ndarray(adjusted_frame, format="bgr24")
 
         return new_frame
 

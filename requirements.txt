@@ -17,6 +17,7 @@ tk
 streamlit
 camera
 streamlit-webrtc
+psutil
 #torch
 torch 
 torchvision 
