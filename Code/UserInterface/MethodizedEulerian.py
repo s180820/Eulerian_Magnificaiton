@@ -18,8 +18,8 @@ class EulerianMagnification:
         Initialize the class instance of Eulerian magnification.
         """
         self.webcam = cap
-        self.realWidth = 500
-        self.realHeight = 600
+        self.realWidth = 1920
+        self.realHeight = 1080
         self.videoWidth = 160
         self.videoHeight = 120
         self.videoChannels = 3
@@ -141,12 +141,23 @@ class EulerianMagnification:
                 "Confidence: {:.2f}%".format(confidence * 100)
                 + "   BPM: Calculating..."
             )
-        y = startY - 10 if startY - 10 > 10 else startY + 10
+
+        # Center the text above the bounding box
+        text_size = cv2.getTextSize(text, self.font, self.fontScale, self.lineType)[0]
+        text_x = startX + (endX - startX - text_size[0]) // 2
+        text_y = startY - 10 if startY - 10 > 10 else startY + 10
+
         cv2.rectangle(
             frame, (startX, startY), (endX, endY), self.boxColor, self.boxWeight
         )
         cv2.putText(
-            frame, text, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 0), 2
+            frame,
+            text,
+            (text_x, text_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            self.fontScale,
+            (0, 255, 0),
+            2,
         )
 
     def buildGauss(self, frame):
@@ -240,6 +251,12 @@ class EulerianMagnification:
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
 
+    def get_bpm_over_time(self):
+        """
+        Used for StremLit statistics
+        """
+        return self.bpmBuffer
+
     def start_video_feed_streamlit(self, display_pyramid=True):
         """Start the video feed and calculate heart rate for Streamlit."""
 
@@ -266,7 +283,7 @@ class EulerianMagnification:
 
                     # Display the processed frame
                     video_placeholder.image(
-                        processed_frame, channels="BGR", use_column_width=True
+                        processed_frame, channels="RGB", use_column_width=True
                     )
 
                     # Event handling
