@@ -173,11 +173,11 @@ class EulerianMagnification:
             for buf in range(self.bufferSize):
                 self.fourierTransformAvg[buf] = np.real(fourierTransform[buf].mean())
             hz = self.frequencies[np.argmax(self.fourierTransformAvg)]
-            bpm = 60 / hz
-            self.bpmBuffer[self.bpmBufferIndex] = bpm
-            self.bpmBufferIndex = (self.bpmBufferIndex + 1) % self.bpmBufferSize
-
-            return bpm
+            if hz > 0:
+                bpm = 60 / hz
+                self.bpmBuffer[self.bpmBufferIndex] = bpm
+                self.bpmBufferIndex = (self.bpmBufferIndex + 1) % self.bpmBufferSize
+                return bpm
 
     def reconstructFrame(self, pyramid, index, videoWidth=160, videoHeight=120):
         filteredFrame = pyramid[index]
