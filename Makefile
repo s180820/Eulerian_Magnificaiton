@@ -3,8 +3,8 @@ install:
 
 run:
 	cd Code/Userinterface; \
-	streamlit run streamlit.py
-	
+	streamlit run streamlit_app.py
+
 run_validation:
 	cd Code/validate_models; \
 	python3 vali.py

@@ -46,7 +46,7 @@ with st.sidebar:
 
 
 if implementation == "Pre-recorded video":
-    video_upload(video_data=video_file)
+    video_upload(video_data=video_file, method=method)
 if implementation == "Live-Feed":
     app_system_monitor()
 if implementation == "Demo":

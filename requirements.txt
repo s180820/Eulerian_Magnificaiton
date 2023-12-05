@@ -7,6 +7,7 @@ scikit-learn
 opencv-python
 wandb
 dlib
+watchdog
 
 # visualization
 matplotlib
