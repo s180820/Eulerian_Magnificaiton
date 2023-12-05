@@ -71,12 +71,6 @@ class EulerianMagnification:
             self.frequencies <= self.maxFrequency
         )
 
-        # Heart rate calc variables.
-        self.bpmCalculationFrequency = 15
-        self.bpmBufferIndex = 0
-        self.bpmBufferSize = 10
-        self.bpmBuffer = np.zeros((self.bpmBufferSize))
-
         self.i = 0
         self.network = cv2.dnn.readNetFromCaffe(PROTOTXT_PATH, MODEL_PATH)
 

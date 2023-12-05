@@ -157,7 +157,7 @@ class MultifaceEulerianMagnification:
         """
         Used for StreamLit statistics
         """
-        return self.BPMs
+        return self.bpmBuffer
 
     def buildGauss(self, frame):
         pyramid = [frame]
@@ -236,7 +236,7 @@ class MultifaceEulerianMagnification:
                     (0, 255, 0),
                     2,
                 )
-            # Process bboxes
+            # # Process bboxes
             for bbox, face_id in bounding_boxes:
                 self.runner(bbox=bbox, face_id=face_id)
             # print(self.BPMs)
