@@ -251,44 +251,6 @@ class EulerianMagnification:
         """
         return self.bpmBuffer
 
-    def start_video_feed_streamlit(self):
-        """Start the video feed and calculate heart rate for Streamlit."""
-
-        st.button("Pyramid Off/On dev")  # Placeholder for Pyramid Off/On button
-
-        video_placeholder = st.empty()
-
-        video_started = False
-
-        while True:
-            # Check if the Start button is pressed
-            if st.button("Start dev") and not video_started:
-                video_started = True
-                st.write("Video stream started!")
-
-                while True:
-                    ret, frame = self.webcam.read()
-
-                    if not ret:
-                        st.write("The video capture has ended.")
-                        break
-
-                    processed_frame = self.process_frame(frame)
-
-                    # Display the processed frame
-                    video_placeholder.image(
-                        processed_frame, channels="RGB", use_column_width=True
-                    )
-
-                    # Check if the Stop button is pressed
-                    if st.button("Stop dev"):
-                        video_started = False
-                        st.write("Stopping the video feed.")
-                        break
-
-            # Wait for a short duration to avoid high CPU usage
-            st.experimental_rerun()
-
     def process_frame(self, frame):
         detection_result = self.image_recog(frame)
 
