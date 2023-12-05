@@ -85,7 +85,9 @@ class VideoProcessor(VideoProcessorBase):
 
 def app_system_monitor():
     st.sidebar.header("WebRTC Configuration")
-
+    bpm_values_custom_dict = {}
+    bpm_stats_custom_dict = {}
+    bpm_stats_df = None
     # Create a class instance for the Eulerian Magnification
     METHOD = st.sidebar.selectbox(
         "Which algorithm do you want to use?",
@@ -130,14 +132,12 @@ def app_system_monitor():
     if webrtc_ctx.state.playing:
         dataframe_placeholder = st.empty()
         dataframe_placeholder_custom = st.empty()
-        monitor_placeholder = st.empty()
         system_placeholder = st.empty()
         # NOTE: The video transformation with system monitoring and
         # this loop displaying the result values are running
         # in different threads asynchronously.
         # Then the rendered video frames and the values displayed here
         # are not strictly synchronized.
-
         frame_counter = 0
         while True:
             if webrtc_ctx.video_processor:
@@ -175,17 +175,24 @@ def app_system_monitor():
                             for key, value in bpm_values_custom.items()
                             if key is not None
                         }
-                        person_stats = {}
+                        # Iterate over each person in the dictionary
+                        for person_id, bpm_values in bpm_values_custom.items():
+                            # Perform BPM analysis
+                            if len(bpm_values) > 200:
+                                bpm_values = bpm_values[-200:]
+                            bpm_df = pd.DataFrame(bpm_values, columns=["BPM"])
+                            # Store BPM values in the dictionary
+                            bpm_values_custom_dict[person_id] = bpm_values
+                            bpm_stats_custom_dict[person_id] = bpm_df.describe()
+                            flatten_data = [
+                                {"Person": person_id, **bpm_stats["BPM"]}
+                                for person_id, bpm_stats in bpm_stats_custom_dict.items()
+                            ]
 
-                        for person, value in bpm_values_custom.items():
-                            person_stats[person] = {
-                                "Mean": pd.Series(value).mean(),
-                                "Max": pd.Series(value).max(),
-                                "Std": pd.Series(value).std(),
-                            }
-                            # Create a dataframe from the dictionary
-                        df_custom = pd.DataFrame.from_dict(person_stats, orient="index")
-                        df_custom.index.name = "Person"  # Name index col
+                            bpm_stats_df = pd.DataFrame(
+                                flatten_data, columns=["Person", "mean", "max", "std"]
+                            )
+                            bpm_stats_df = bpm_stats_df.reset_index(drop=True)
 
                 except queue.Empty:
                     result = None
@@ -202,12 +209,36 @@ def app_system_monitor():
                                 labels={"X": "Frame", "y": "BPM"},
                             )
                             st.write(fig)
+
                 if METHOD == "Custom implemented Eulerian Magnification":
                     with dataframe_placeholder_custom.container():
                         fig_col1, fig_col2 = st.columns(2)
                         with fig_col1:
-                            st.markdown("## BPM statistics")
-                            st.write(df_custom.round(2))
+                            with fig_col1:
+                                st.markdown("## BPM statistics")
+                                st.write(bpm_stats_df)
+
+                            with fig_col2:
+                                # Create a Plotly line plot for each person in bpm_values_custom_dict
+                                fig = go.Figure()
+                                for (
+                                    person_id,
+                                    bpm_values,
+                                ) in bpm_values_custom_dict.items():
+                                    fig.add_trace(
+                                        go.Scatter(
+                                            x=np.arange(len(bpm_values)),
+                                            y=bpm_values,
+                                            mode="lines",
+                                            name=f"Person {person_id}",
+                                        )
+                                    )
+                                    fig.update_layout(
+                                        title="BPM Over Time",
+                                        xaxis_title="Frame",
+                                        yaxis_title="BPM",
+                                    )
+                                st.plotly_chart(fig, use_container_width=True)
                 if checkbox:
                     with system_placeholder.container():
                         st.markdown("## System stats")
