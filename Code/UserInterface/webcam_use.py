@@ -47,7 +47,6 @@ class VideoProcessor(VideoProcessorBase):
                 )
             )
             new_frame = av.VideoFrame.from_ndarray(processed_frame2, format="bgr24")
-            print("[Debugging]", processed_frame2)
 
         else:
             new_frame = av.VideoFrame.from_ndarray(adjusted_frame, format="bgr24")
@@ -74,6 +73,9 @@ class VideoProcessor(VideoProcessorBase):
 
     def getBPM(self):
         return self.magnification_processor.get_bpm_over_time()
+
+    def getBPMCustom(self):
+        return self.custom_magnification_processor.get_bpm_over_time()
 
 
 def app_system_monitor():
@@ -113,7 +115,7 @@ def app_system_monitor():
     checkbox = st.sidebar.checkbox("Show CPU and Memory Usage", value=True)
     if webrtc_ctx.state.playing:
         dataframe_placeholder = st.empty()
-        stat_plot_placeholder = st.empty()
+        dataframe_placeholder_custom = st.empty()
         monitor_placeholder = st.empty()
         system_placeholder = st.empty()
         # NOTE: The video transformation with system monitoring and
@@ -150,6 +152,25 @@ def app_system_monitor():
                             inplace=True,
                         )
                         bpm_df = bpm_df.T.round(2)
+                    if METHOD == "Custom implemented Eulerian Magnification":
+                        bpm_values_custom = webrtc_ctx.video_processor.getBPMCustom()
+                        # Remove the first element (where the key is None)
+                        bpm_values_custom = {
+                            key: value
+                            for key, value in bpm_values_custom.items()
+                            if key is not None
+                        }
+                        person_stats = {}
+
+                        for person, value in bpm_values_custom.items():
+                            person_stats[person] = {
+                                "Mean": pd.Series(value).mean(),
+                                "Max": pd.Series(value).max(),
+                                "Std": pd.Series(value).std(),
+                            }
+                            # Create a dataframe from the dictionary
+                        df_custom = pd.DataFrame.from_dict(person_stats, orient="index")
+                        df_custom.index.name = "Person"  # Name index col
 
                 except queue.Empty:
                     result = None
@@ -166,39 +187,16 @@ def app_system_monitor():
                                 labels={"X": "Frame", "y": "BPM"},
                             )
                             st.write(fig)
-
+                if METHOD == "Custom implemented Eulerian Magnification":
+                    with dataframe_placeholder_custom.container():
+                        fig_col1, fig_col2 = st.columns(2)
+                        with fig_col1:
+                            st.markdown("## BPM statistics")
+                            st.write(df_custom.round(2))
                 if checkbox:
                     with system_placeholder.container():
                         st.markdown("## System stats")
-                        # with stat_plot_placeholder.container():
-                        #     fig_col1, fig_col2 = st.columns(2)
-                        #     if frame_counter % 40:
-                        #         with fig_col1:
-                        #             st.markdown("### CPU usage")
-                        #             fig_cpu = px.line(
-                        #                 x=np.arange(
-                        #                     len(
-                        #                         webrtc_ctx.video_processor.cpu_usage_history
-                        #                     )
-                        #                 ),
-                        #                 y=webrtc_ctx.video_processor.cpu_usage_history,
-                        #                 labels={"x": "Frame", "y": "CPU Usage (%)"},
-                        #             )
-                        #             st.write(fig_cpu)
-                        #         with fig_col2:
-                        #             st.markdown("### CPU usage")
-                        #             fig_memory = px.line(
-                        #                 x=np.arange(
-                        #                     len(
-                        #                         webrtc_ctx.video_processor.memory_usage_history
-                        #                     )
-                        #                 ),
-                        #                 y=webrtc_ctx.video_processor.memory_usage_history,
-                        #                 labels={"x": "Frame", "y": "Memory Usage (%)"},
-                        #             )
-                        #             st.write(fig_memory)
-
-                        monitor_placeholder.text(
+                        st.write(
                             f"CPU Usage: {result['CPU Usage']:.2f}% | Memory Usage: {result['Memory Usage']:.2f}%"
                         )
 

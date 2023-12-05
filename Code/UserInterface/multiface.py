@@ -153,6 +153,12 @@ class MultifaceEulerianMagnification:
         )
         self.i = 0
 
+    def get_bpm_over_time(self):
+        """
+        Used for StreamLit statistics
+        """
+        return self.BPMs
+
     def buildGauss(self, frame):
         pyramid = [frame]
         for level in range(self.levels + 1):
@@ -198,7 +204,7 @@ class MultifaceEulerianMagnification:
             # Display the label
             if match is not None:
                 label_text = self.labels[match]
-                bpm_text = f"BPM: {self.BPMs.get(match, 0)}"
+                bpm_text = f"BPM: {self.BPMs.get(match, [0])[-1]:.2f}"  # Display a static BPM value
                 cv2.putText(
                     self.frame,
                     label_text,
@@ -233,8 +239,8 @@ class MultifaceEulerianMagnification:
             # Process bboxes
             for bbox, face_id in bounding_boxes:
                 self.runner(bbox=bbox, face_id=face_id)
-
-            return self.frame
+            # print(self.BPMs)
+        return self.frame
 
     def estimate_heart_rate(self, fourierTransform, face_id):
         if face_id not in self.bpmBufferIndex:
@@ -247,12 +253,13 @@ class MultifaceEulerianMagnification:
                     fourierTransform[buf].mean()
                 )
             hz = self.frequencies[np.argmax(self.fourierTransformAvg[face_id])]
-            bpm = 60 * hz
-            self.bpmBuffer[face_id][self.bpmBufferIndex[face_id]] = bpm
-            self.bpmBufferIndex[face_id] = (
-                self.bpmBufferIndex[face_id] + 1
-            ) % self.bpmBufferSize
-            return bpm
+            if hz > 0:
+                bpm = 60 * hz
+                self.bpmBuffer[face_id][self.bpmBufferIndex[face_id]] = bpm
+                self.bpmBufferIndex[face_id] = (
+                    self.bpmBufferIndex[face_id] + 1
+                ) % self.bpmBufferSize
+                return bpm
 
     def eulerian_magnification(
         self, detectionframe, startY, endY, startX, endX, face_id
@@ -277,6 +284,7 @@ class MultifaceEulerianMagnification:
             )
             self.fourierTransformAvg[face_id] = np.zeros((self.bufferSize))
             self.bpmBuffer[face_id] = np.zeros((self.bpmBufferSize))
+            self.BPMs[face_id] = []
 
         # If already exist or just created -- Continue computing fft.
         self.videoGauss[face_id][self.bufferIdx[face_id]] = pyramid
@@ -289,10 +297,10 @@ class MultifaceEulerianMagnification:
         )
         # print(f"[VERBOSE] Heartrate of person {face_id}: {bpm}")
         if face_id not in self.BPMs:
-            # initialize at 0
-            self.BPMs[face_id] = 0
+            # initialize at an empty list
+            self.BPMs[face_id] = []
         if bpm is not None:
-            self.BPMs[face_id] = bpm
+            self.BPMs[face_id].append(bpm)
 
         self.bufferIdx[face_id] = (self.bufferIdx[face_id] + 1) % self.bufferSize
 
@@ -315,7 +323,7 @@ class MultifaceEulerianMagnification:
             ret, self.frame = self.cap.read()
             self.frame_counter += 1
 
-            if self.frame_counter % 3 == 0:
+            if self.frame_counter % 1 == 0:
                 # Convert the frame to grayscale for face detection
                 gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
 
@@ -365,7 +373,7 @@ class MultifaceEulerianMagnification:
                     # Display the label
                     if match is not None:
                         label_text = self.labels[match]
-                        bpm_text = f"BPM: {self.BPMs.get(match, 0)}"
+                        bpm_text = f"BPM: {self.BPMs.get(match, [0])[-1]:.2f}"  # Display a static BPM value
                         cv2.putText(
                             self.frame,
                             label_text,
@@ -402,7 +410,6 @@ class MultifaceEulerianMagnification:
                 # Process bounding boxes and face IDs as needed
                 for bbox, face_id in bounding_boxes:
                     self.runner(bbox=bbox, face_id=face_id)
-
                 # Display the frame
                 cv2.imshow("Webcam", self.frame)
 
