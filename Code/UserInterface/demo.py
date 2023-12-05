@@ -70,7 +70,7 @@ def demo():
             st.write("The video capture has ended")
             break
         #img = frame.to_ndarray(format="bgr24")
-        eulerian_processor.process_frame(frame)
+        eulerian_processor.process_frame(frame, display_pyramid=True)
         bpmES = eulerian_processor.get_bpm_over_time()
         
 
