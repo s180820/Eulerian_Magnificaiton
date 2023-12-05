@@ -174,7 +174,7 @@ class EulerianMagnification:
                 self.fourierTransformAvg[buf] = np.real(fourierTransform[buf].mean())
             hz = self.frequencies[np.argmax(self.fourierTransformAvg)]
             if hz > 0:
-                bpm = 60 / hz
+                bpm = 60 * hz
                 self.bpmBuffer[self.bpmBufferIndex] = bpm
                 self.bpmBufferIndex = (self.bpmBufferIndex + 1) % self.bpmBufferSize
                 return bpm

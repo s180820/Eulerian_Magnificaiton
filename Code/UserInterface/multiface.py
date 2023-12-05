@@ -153,6 +153,12 @@ class MultifaceEulerianMagnification:
         )
         self.i = 0
 
+    def get_bpm_over_time(self):
+        """
+        Used for StreamLit statistics
+        """
+        return self.BPMs
+
     def buildGauss(self, frame):
         pyramid = [frame]
         for level in range(self.levels + 1):
@@ -233,7 +239,7 @@ class MultifaceEulerianMagnification:
             # Process bboxes
             for bbox, face_id in bounding_boxes:
                 self.runner(bbox=bbox, face_id=face_id)
-
+            # print(self.BPMs)
             return self.frame
 
     def estimate_heart_rate(self, fourierTransform, face_id):
@@ -402,7 +408,6 @@ class MultifaceEulerianMagnification:
                 # Process bounding boxes and face IDs as needed
                 for bbox, face_id in bounding_boxes:
                     self.runner(bbox=bbox, face_id=face_id)
-
                 # Display the frame
                 cv2.imshow("Webcam", self.frame)
 
