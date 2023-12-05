@@ -24,6 +24,10 @@ ipython_config.py
 # Remove previous ipynb_checkpoints
 #   git rm -r .ipynb_checkpoints/
 **.png
+**.fys
+**.MTS
+
+Code/validate_models/val_data/**/**.rr
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

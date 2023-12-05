@@ -4,6 +4,10 @@ install:
 run:
 	cd Code/Userinterface; \
 	streamlit run streamlit.py
+	
+run_validation:
+	cd Code/validate_models; \
+	python3 vali.py
 
 clean:
 	rm -rf .venv
