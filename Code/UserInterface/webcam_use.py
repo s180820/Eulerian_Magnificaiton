@@ -20,11 +20,14 @@ class VideoProcessor(VideoProcessorBase):
     result_queue: "queue.Queue[Dict[str, float]]"
     cpu_usage_history: list
 
-    def __init__(self, method=None, brightness=None, contrast=None) -> None:
+    def __init__(
+        self, method=None, brightness=None, contrast=None, display_pyramid=None
+    ) -> None:
         self.result_queue = queue.Queue()
         self.method = method
         self.brightness = brightness
         self.contrast = contrast
+        self.display_pyramid = display_pyramid
         self.magnification_processor = EulerianMagnification()
         self.custom_magnification_processor = MultifaceEulerianMagnification()
         self.cpu_usage_history = []
@@ -38,7 +41,9 @@ class VideoProcessor(VideoProcessorBase):
         )
         if self.method == "Traditional Eulerian Magnification":
             # Perform Eulerian magnification using the class and display the output.
-            processed_frame = self.magnification_processor.process_frame(adjusted_frame)
+            processed_frame = self.magnification_processor.process_frame(
+                adjusted_frame, self.display_pyramid
+            )
             new_frame = av.VideoFrame.from_ndarray(processed_frame, format="bgr24")
         elif self.method == "Custom implemented Eulerian Magnification":
             processed_frame2 = (
@@ -105,10 +110,19 @@ def app_system_monitor():
         value=1.0,
         step=0.1,
     )
+
+    # Checkbox for displaying pyramid in Traditional Eulerian Magnification
+    display_pyramid = st.sidebar.checkbox(
+        "Display Pyramid (Traditional Eulerian Magnification)",
+        value=True,
+        key="display_pyramid",
+    )
+
     webrtc_ctx = webrtc_streamer(
         key="system-monitor",
         video_processor_factory=VideoProcessor,
         async_processing=True,
+        media_stream_constraints={"video": True, "audio": False},
     )
 
     st.sidebar.header("System Monitor Configuration")
@@ -133,6 +147,7 @@ def app_system_monitor():
                     webrtc_ctx.video_processor.brightness = brightness
                     webrtc_ctx.video_processor.contrast = contrast
                     webrtc_ctx.video_processor.method = METHOD
+                    webrtc_ctx.video_processor.display_pyramid = display_pyramid
 
                     frame_counter += 1
                     if METHOD == "Traditional Eulerian Magnification":
