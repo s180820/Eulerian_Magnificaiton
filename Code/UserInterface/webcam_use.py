@@ -11,6 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px  # interactive charts
+from multiface import MultifaceEulerianMagnification
 
 HERE = Path(__file__).parent
 
@@ -25,6 +26,7 @@ class VideoProcessor(VideoProcessorBase):
         self.brightness = brightness
         self.contrast = contrast
         self.magnification_processor = EulerianMagnification()
+        self.custom_magnification_processor = MultifaceEulerianMagnification()
         self.cpu_usage_history = []
         self.memory_usage_history = []
 
@@ -34,23 +36,19 @@ class VideoProcessor(VideoProcessorBase):
         adjusted_frame = cv2.convertScaleAbs(
             img, alpha=self.contrast, beta=self.brightness
         )
-
-        if self.method == "Deep Learning Frameworks":
-            # Convert to grayscale
-            gray = cv2.cvtColor(adjusted_frame, cv2.COLOR_BGR2GRAY)
-
-            # Convert back to BGR for displaying
-            gray_bgr = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-
-            # Ensure the correct shape for av.VideoFrame
-            gray_bgr = np.ascontiguousarray(gray_bgr)
-
-            # Create av.VideoFrame with the correct format
-            new_frame = av.VideoFrame.from_ndarray(gray_bgr, format="bgr24")
-        elif self.method == "Traditional Eulerian Magnification":
+        if self.method == "Traditional Eulerian Magnification":
             # Perform Eulerian magnification using the class and display the output.
             processed_frame = self.magnification_processor.process_frame(adjusted_frame)
             new_frame = av.VideoFrame.from_ndarray(processed_frame, format="bgr24")
+        elif self.method == "Custom implemented Eulerian Magnification":
+            processed_frame2 = (
+                self.custom_magnification_processor.process_frame_streamlit(
+                    adjusted_frame
+                )
+            )
+            new_frame = av.VideoFrame.from_ndarray(processed_frame2, format="bgr24")
+            print("[Debugging]", processed_frame2)
+
         else:
             new_frame = av.VideoFrame.from_ndarray(adjusted_frame, format="bgr24")
 
@@ -81,6 +79,16 @@ class VideoProcessor(VideoProcessorBase):
 def app_system_monitor():
     st.sidebar.header("WebRTC Configuration")
 
+    # Create a class instance for the Eulerian Magnification
+    METHOD = st.sidebar.selectbox(
+        "Which algorithm do you want to use?",
+        (
+            "None",
+            "Traditional Eulerian Magnification",
+            "Custom implemented Eulerian Magnification",
+        ),
+    )
+
     # Sliders for brightness and contrast
     brightness = st.sidebar.slider(
         "Brightness",
@@ -95,18 +103,6 @@ def app_system_monitor():
         value=1.0,
         step=0.1,
     )
-
-    # Create a class instance for the Eulerian Magnification
-    METHOD = st.sidebar.selectbox(
-        "Which algorithm do you want to use?",
-        (
-            "None",
-            "Traditional Eulerian Magnification",
-            "Custom implemented Eulerian Magnification",
-            "Deep Learning Frameworks",
-        ),
-    )
-
     webrtc_ctx = webrtc_streamer(
         key="system-monitor",
         video_processor_factory=VideoProcessor,
@@ -170,6 +166,7 @@ def app_system_monitor():
                                 labels={"X": "Frame", "y": "BPM"},
                             )
                             st.write(fig)
+
                 if checkbox:
                     with system_placeholder.container():
                         st.markdown("## System stats")

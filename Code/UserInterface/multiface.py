@@ -11,64 +11,64 @@
 """
 
 import cv2
+import streamlit as st
 import dlib
 import numpy as np
 
 
-class EulerianMagnification:
+class MultifaceEulerianMagnification:
     """
-        Class to perform concurrent eulerian magnification
-        on multiple faces in a video stream
-        Attributes:
-            detector: dlib face detector
-            predictor: dlib facial landmarks predictor
-            facerec: dlib face recognition model
-            face_encodings: dictionary to store face encodings
-            labels: dictionary to store face labels
-            cap: webcam object
-            frame_counter: counter to keep track of frames
-            realWidth: width of the webcam frame
-            realHeight: height of the webcam frame
-            videoWidth: width of the video frame
-            videoHeight: height of the video frame
-            videoChannels: number of channels in the video frame
-            videoFrameRate: frame rate of the video
-            frame: current frame
-            levels: number of levels in the gaussian pyramid
-            alpha: alpha value for color magnification
-            minFrequency: minimum frequency for color magnification
-            maxFrequency: maximum frequency for color magnification
-            bufferSize: size of the buffer
-            bufferIdx: dictionary to store buffer indices
-            font: font for the text
-            loadingTextLocation: location of the loading text
-            bpmTextLocation: location of the bpm text
-            fontScale: font scale
-            fontColor: font color
-            lineType: line type
-            boxColor: color of the bounding box
-            boxWeight: weight of the bounding box
-            bpmCalculationFrequency: frequency of bpm calculation
-            bpmBufferIndex: dictionary to store bpm buffer indices
-            bpmBufferSize: size of the bpm buffer
-            bpmBuffer: dictionary to store bpm buffers
-            BPMs: dictionary to store BPMs
-            firstFrame: first frame of the video
-            firstGauss: first gaussian pyramid
-            videoGauss: dictionary to store gaussian pyramids
-            fourierTransformAvg: dictionary to store fourier transforms
-            frequencies: frequencies for color magnification
-            mask: mask for color magnification
-            i: counter to keep track of frames
+    Class to perform concurrent eulerian magnification
+    on multiple faces in a video stream
+    Attributes:
+        detector: dlib face detector
+        predictor: dlib facial landmarks predictor
+        facerec: dlib face recognition model
+        face_encodings: dictionary to store face encodings
+        labels: dictionary to store face labels
+        cap: webcam object
+        frame_counter: counter to keep track of frames
+        realWidth: width of the webcam frame
+        realHeight: height of the webcam frame
+        videoWidth: width of the video frame
+        videoHeight: height of the video frame
+        videoChannels: number of channels in the video frame
+        videoFrameRate: frame rate of the video
+        frame: current frame
+        levels: number of levels in the gaussian pyramid
+        alpha: alpha value for color magnification
+        minFrequency: minimum frequency for color magnification
+        maxFrequency: maximum frequency for color magnification
+        bufferSize: size of the buffer
+        bufferIdx: dictionary to store buffer indices
+        font: font for the text
+        loadingTextLocation: location of the loading text
+        bpmTextLocation: location of the bpm text
+        fontScale: font scale
+        fontColor: font color
+        lineType: line type
+        boxColor: color of the bounding box
+        boxWeight: weight of the bounding box
+        bpmCalculationFrequency: frequency of bpm calculation
+        bpmBufferIndex: dictionary to store bpm buffer indices
+        bpmBufferSize: size of the bpm buffer
+        bpmBuffer: dictionary to store bpm buffers
+        BPMs: dictionary to store BPMs
+        firstFrame: first frame of the video
+        firstGauss: first gaussian pyramid
+        videoGauss: dictionary to store gaussian pyramids
+        fourierTransformAvg: dictionary to store fourier transforms
+        frequencies: frequencies for color magnification
+        mask: mask for color magnification
+        i: counter to keep track of frames
 
-        Methods:
-            buildGauss: builds a gaussian pyramid
-            unpack_coordinates: unpacks the bounding box coordinates
-            estimate_heart_rate
-    : grabs the pulse from the fourier transform
-            eulerian_magnification: performs eulerian magnification
-            runner: runs the eulerian magnification
-            recognize_faces: recognizes faces in the video stream
+    Methods:
+        buildGauss: builds a gaussian pyramid
+        unpack_coordinates: unpacks the bounding box coordinates
+        estimate_heart_rate: grabs the pulse from the fourier transform
+        eulerian_magnification: performs eulerian magnification
+        runner: runs the eulerian magnification
+        recognize_faces: recognizes faces in the video stream
 
 
     """
@@ -166,6 +166,76 @@ class EulerianMagnification:
         endX, endY = end_point
         return startY, endY, startX, endX
 
+    def process_frame_streamlit(self, frame):
+        self.frame = frame
+        gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
+        faces = self.detector(gray)
+
+        bounding_boxes = []
+
+        for face in faces:
+            shape = self.predictor(gray, face)
+
+            # Get face encofing
+            face_encoding = self.facerec.compute_face_descriptor(self.frame, shape)
+
+            # check if the face matches any known face
+            match = None
+            for label, encoding in self.face_encodings.items():
+                if np.linalg.norm(np.array(encoding) - np.array(face_encoding)) < 0.6:
+                    match = label
+                    break
+            # If the face is not recognized
+            if match is None:
+                label = len(self.face_encodings) + 1
+                self.face_encodings[label] = face_encoding
+                self.labels[label] = f"Person {label}"
+            # Draw rect
+            bbox = ((face.left(), face.top()), (face.right(), face.bottom()))
+            bounding_boxes.append((bbox, match))
+
+            cv2.rectangle(frame, bbox[0], bbox[1], (0, 255, 0), 2)
+            # Display the label
+            if match is not None:
+                label_text = self.labels[match]
+                bpm_text = f"BPM: {self.BPMs.get(match, 0)}"
+                cv2.putText(
+                    self.frame,
+                    label_text,
+                    (bbox[0][0], bbox[0][1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.9,
+                    (0, 255, 0),
+                    2,
+                )
+                cv2.putText(
+                    self.frame,
+                    bpm_text,
+                    (
+                        bbox[0][0],
+                        bbox[1][1] + 20,
+                    ),  # Adjust the vertical position
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,  # Adjust the font scale
+                    (0, 255, 0),
+                    2,
+                )
+            else:
+                cv2.putText(
+                    self.frame,
+                    "Unknown",
+                    (bbox[0][0], bbox[0][1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.9,
+                    (0, 255, 0),
+                    2,
+                )
+            # Process bboxes
+            for bbox, face_id in bounding_boxes:
+                self.runner(bbox=bbox, face_id=face_id)
+
+            return self.frame
+
     def estimate_heart_rate(self, fourierTransform, face_id):
         if face_id not in self.bpmBufferIndex:
             print(f"[DEBUG - Pulse] {face_id} not found in bpmBufferIndex. Setting 0")
@@ -239,8 +309,6 @@ class EulerianMagnification:
             endX=endX,
             face_id=face_id,
         )
-
-        # print(f"Face ID: {face_id}, Bounding Box: {bbox}")
 
     def recognize_faces(self):
         while True:
@@ -349,5 +417,5 @@ class EulerianMagnification:
 
 if __name__ == "__main__":
     # Instantiate the class and run the facial recognition
-    eulerian = EulerianMagnification()
+    eulerian = MultifaceEulerianMagnification()
     eulerian.recognize_faces()  # Running method -- Will call concurrent methods to perform Eulerian Magnification
