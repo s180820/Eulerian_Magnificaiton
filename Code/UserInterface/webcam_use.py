@@ -169,10 +169,8 @@ def app_system_monitor():
                                 "Std": pd.Series(value).std(),
                             }
                             # Create a dataframe from the dictionary
-                        df = pd.DataFrame.from_dict(person_stats, orient="index")
-
-                        # Display the dataframe
-                        print(df)
+                        df_custom = pd.DataFrame.from_dict(person_stats, orient="index")
+                        df_custom.index.name = "Person"  # Name index col
 
                 except queue.Empty:
                     result = None
@@ -194,39 +192,11 @@ def app_system_monitor():
                         fig_col1, fig_col2 = st.columns(2)
                         with fig_col1:
                             st.markdown("## BPM statistics")
-                            # st.write(bpm_stats_custom)
+                            st.write(df_custom.round(2))
                 if checkbox:
                     with system_placeholder.container():
                         st.markdown("## System stats")
-                        # with stat_plot_placeholder.container():
-                        #     fig_col1, fig_col2 = st.columns(2)
-                        #     if frame_counter % 40:
-                        #         with fig_col1:
-                        #             st.markdown("### CPU usage")
-                        #             fig_cpu = px.line(
-                        #                 x=np.arange(
-                        #                     len(
-                        #                         webrtc_ctx.video_processor.cpu_usage_history
-                        #                     )
-                        #                 ),
-                        #                 y=webrtc_ctx.video_processor.cpu_usage_history,
-                        #                 labels={"x": "Frame", "y": "CPU Usage (%)"},
-                        #             )
-                        #             st.write(fig_cpu)
-                        #         with fig_col2:
-                        #             st.markdown("### CPU usage")
-                        #             fig_memory = px.line(
-                        #                 x=np.arange(
-                        #                     len(
-                        #                         webrtc_ctx.video_processor.memory_usage_history
-                        #                     )
-                        #                 ),
-                        #                 y=webrtc_ctx.video_processor.memory_usage_history,
-                        #                 labels={"x": "Frame", "y": "Memory Usage (%)"},
-                        #             )
-                        #             st.write(fig_memory)
-
-                        monitor_placeholder.text(
+                        st.write(
                             f"CPU Usage: {result['CPU Usage']:.2f}% | Memory Usage: {result['Memory Usage']:.2f}%"
                         )
 
