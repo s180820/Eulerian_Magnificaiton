@@ -39,7 +39,6 @@ with st.sidebar:
                 "None",
                 "Traditional Eulerian Magnification",
                 "Custom implemented Eulerian Magnification",
-                "Deep Learning Frameworks",
             ),
         )
     # if implementation == "Demo":
@@ -47,7 +46,7 @@ with st.sidebar:
 
 
 if implementation == "Pre-recorded video":
-    video_upload()
+    video_upload(video_data=video_file)
 if implementation == "Live-Feed":
     app_system_monitor()
 if implementation == "Demo":

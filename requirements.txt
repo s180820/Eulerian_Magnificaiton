@@ -6,6 +6,7 @@ scipy
 scikit-learn
 opencv-python
 wandb
+dlib
 
 # visualization
 matplotlib
