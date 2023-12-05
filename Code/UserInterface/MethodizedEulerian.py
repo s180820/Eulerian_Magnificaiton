@@ -133,29 +133,47 @@ class EulerianMagnification:
         startX, startY, endX, endY = box
         if self.i > self.bpmBufferSize:
             if BPM > 190 or BPM > 40 and confidence * 100 > 50:
-                text = "Confidence: {:.2f}%".format(
-                    confidence * 100
-                ) + "   BPM: {}".format(int(BPM))
+                confidence_text = "Confidence: {:.2f}%".format(confidence * 100)
+                bpm_text = "BPM: {}".format(int(BPM))
+            else:
+                confidence_text = "Confidence: {:.2f}%".format(confidence * 100)
+                bpm_text = "BPM: Calculating..."
         else:
-            text = (
-                "Confidence: {:.2f}%".format(confidence * 100)
-                + "   BPM: Calculating..."
-            )
+            confidence_text = "Confidence: {:.2f}%".format(confidence * 100)
+            bpm_text = "BPM: Calculating..."
 
-        # Center the text above the bounding box
-        text_size = cv2.getTextSize(text, self.font, self.fontScale, self.lineType)[0]
-        text_x = startX + (endX - startX - text_size[0]) // 2
-        text_y = startY - 10 if startY - 10 > 10 else startY + 10
+        # Center the text above the bounding box for confidence
+        confidence_text_size = cv2.getTextSize(
+            confidence_text, self.font, self.fontScale, self.lineType
+        )[0]
+        confidence_text_x = startX + (endX - startX - confidence_text_size[0]) // 2
+        confidence_text_y = startY - 10 if startY - 10 > 10 else startY + 10
+
+        # Center the text below the bounding box for BPM
+        bpm_text_size = cv2.getTextSize(
+            bpm_text, self.font, self.fontScale, self.lineType
+        )[0]
+        bpm_text_x = startX + (endX - startX - bpm_text_size[0]) // 2
+        bpm_text_y = endY + 20 if endY + 20 < self.realHeight else endY - 10
 
         cv2.rectangle(
             frame, (startX, startY), (endX, endY), self.boxColor, self.boxWeight
         )
         cv2.putText(
             frame,
-            text,
-            (text_x, text_y),
+            confidence_text,
+            (confidence_text_x, confidence_text_y),
             cv2.FONT_HERSHEY_SIMPLEX,
-            self.fontScale,
+            0.7,
+            (0, 255, 0),
+            2,
+        )
+        cv2.putText(
+            frame,
+            bpm_text,
+            (bpm_text_x, bpm_text_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
             (0, 255, 0),
             2,
         )
@@ -251,7 +269,8 @@ class EulerianMagnification:
         """
         return self.bpmBuffer
 
-    def process_frame(self, frame):
+    def process_frame(self, frame, display_pyramid):
+        self.display_pyramid = display_pyramid
         detection_result = self.image_recog(frame)
 
         if detection_result is not None:
