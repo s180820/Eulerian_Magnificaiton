@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, VideoHTMLAttributes
 import av
 import cv2
 import psutil
@@ -10,6 +10,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px  # interactive charts
 import sys
+
 sys.path.append("../Eulerian_Magnification/")
 from Methodized_Eulerian import EulerianMagnification
 from Multiface_Eulerian import MultifaceEulerianMagnification
@@ -67,9 +68,9 @@ class VideoProcessor(VideoProcessorBase):
         self.cpu_usage_history.append(cpu_percent)
         self.memory_usage_history.append(memory_percent)
 
-        if len(self.cpu_usage_history) or len(self.memory_usage_history) > 150:
-            self.cpu_usage_history = self.cpu_usage_history[-150:]
-            self.memory_usage_history = self.memory_usage_history[-150:]
+        if len(self.cpu_usage_history) or len(self.memory_usage_history) > 200:
+            self.cpu_usage_history = self.cpu_usage_history[-200:]
+            self.memory_usage_history = self.memory_usage_history[-200:]
 
         # NOTE: This `recv` method is called in another thread,
         # so it must be thread-safe.
@@ -89,7 +90,7 @@ def app_system_monitor():
     bpm_values_custom_dict = {}
     bpm_stats_custom_dict = {}
     bpm_stats_df = None
-    # Create a class instance for the Eulerian Magnification
+
     METHOD = st.sidebar.selectbox(
         "Which algorithm do you want to use?",
         (
@@ -99,59 +100,51 @@ def app_system_monitor():
         ),
     )
 
-    # Sliders for brightness and contrast
-    brightness = st.sidebar.slider(
-        "Brightness",
-        min_value=-100,
-        max_value=100,
-        value=0,
-    )
-    contrast = st.sidebar.slider(
-        "Contrast",
-        min_value=0.1,
-        max_value=3.0,
-        value=1.0,
-        step=0.1,
-    )
-
-    # Checkbox for displaying pyramid in Traditional Eulerian Magnification
-    display_pyramid = st.sidebar.checkbox(
-        "Display Pyramid (Traditional Eulerian Magnification)",
-        value=True,
-        key="display_pyramid",
-    )
+    if METHOD == "Traditional Eulerian Magnification":
+        display_pyramid = st.sidebar.checkbox(
+            "Display Pyramid (Traditional Eulerian Magnification)",
+            value=True,
+            key="display_pyramid",
+        )
 
     webrtc_ctx = webrtc_streamer(
         key="system-monitor",
         video_processor_factory=VideoProcessor,
         async_processing=True,
         media_stream_constraints={"video": True, "audio": False},
+        video_html_attrs=VideoHTMLAttributes(controls=False, autoPlay=True),
     )
 
-    st.sidebar.header("System Monitor Configuration")
-    checkbox = st.sidebar.checkbox("Show CPU and Memory Usage", value=True)
     if webrtc_ctx.state.playing:
+        brightness = st.sidebar.slider(
+            "Brightness",
+            min_value=-100,
+            max_value=100,
+            value=0,
+        )
+        contrast = st.sidebar.slider(
+            "Contrast",
+            min_value=0.1,
+            max_value=3.0,
+            value=1.0,
+            step=0.1,
+        )
+        st.sidebar.header("System Monitor Configuration")
+        checkbox = st.sidebar.checkbox("Show CPU and Memory Usage", value=True)
+
         dataframe_placeholder = st.empty()
         dataframe_placeholder_custom = st.empty()
-        system_placeholder = st.empty()
-        # NOTE: The video transformation with system monitoring and
-        # this loop displaying the result values are running
-        # in different threads asynchronously.
-        # Then the rendered video frames and the values displayed here
-        # are not strictly synchronized.
-        frame_counter = 0
+        system_stats_none = st.empty()
+
         while True:
             if webrtc_ctx.video_processor:
                 try:
                     result = webrtc_ctx.video_processor.result_queue.get(timeout=1.0)
-                    # Update Sliders
                     webrtc_ctx.video_processor.brightness = brightness
                     webrtc_ctx.video_processor.contrast = contrast
                     webrtc_ctx.video_processor.method = METHOD
-                    webrtc_ctx.video_processor.display_pyramid = display_pyramid
-
-                    frame_counter += 1
                     if METHOD == "Traditional Eulerian Magnification":
+                        webrtc_ctx.video_processor.display_pyramid = display_pyramid
                         bpm_values = webrtc_ctx.video_processor.getBPM()
                         if len(bpm_values) > 200:
                             bpm_values = bpm_values[-200:]
@@ -168,6 +161,7 @@ def app_system_monitor():
                             inplace=True,
                         )
                         bpm_df = bpm_df.T.round(2)
+
                     if METHOD == "Custom implemented Eulerian Magnification":
                         bpm_values_custom = webrtc_ctx.video_processor.getBPMCustom()
                         # Remove the first element (where the key is None)
@@ -197,12 +191,24 @@ def app_system_monitor():
 
                 except queue.Empty:
                     result = None
+                if METHOD == "None":
+                    if checkbox:
+                        with system_stats_none.container():
+                            st.markdown("## System stats")
+                            st.write(
+                                f"CPU Usage: {result['CPU Usage']:.2f}% | Memory Usage: {result['Memory Usage']:.2f}%"
+                            )
                 if METHOD == "Traditional Eulerian Magnification":
                     with dataframe_placeholder.container():
                         fig_col1, fig_col2 = st.columns(2)
                         with fig_col1:
                             st.markdown("## BPM statistics")
                             st.write(bpm_df)
+                            if checkbox:
+                                st.markdown("## System stats")
+                                st.write(
+                                    f"CPU Usage: {result['CPU Usage']:.2f}% | Memory Usage: {result['Memory Usage']:.2f}%"
+                                )
                         with fig_col2:
                             fig = px.line(
                                 x=np.arange(len(bpm_values)),
@@ -215,12 +221,14 @@ def app_system_monitor():
                     with dataframe_placeholder_custom.container():
                         fig_col1, fig_col2 = st.columns(2)
                         with fig_col1:
-                            with fig_col1:
-                                st.markdown("## BPM statistics")
-                                st.write(bpm_stats_df)
-
+                            st.markdown("## BPM statistics")
+                            st.write(bpm_stats_df)
+                            if checkbox:
+                                st.markdown("## System stats")
+                                st.write(
+                                    f"CPU Usage: {result['CPU Usage']:.2f}% | Memory Usage: {result['Memory Usage']:.2f}%"
+                                )
                             with fig_col2:
-                                # Create a Plotly line plot for each person in bpm_values_custom_dict
                                 fig = go.Figure()
                                 for (
                                     person_id,
@@ -240,12 +248,6 @@ def app_system_monitor():
                                         yaxis_title="BPM",
                                     )
                                 st.plotly_chart(fig, use_container_width=True)
-                if checkbox:
-                    with system_placeholder.container():
-                        st.markdown("## System stats")
-                        st.write(
-                            f"CPU Usage: {result['CPU Usage']:.2f}% | Memory Usage: {result['Memory Usage']:.2f}%"
-                        )
 
             else:
                 break

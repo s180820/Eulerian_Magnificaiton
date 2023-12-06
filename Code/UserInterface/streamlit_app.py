@@ -3,6 +3,15 @@ from webcam_use import app_system_monitor
 from demo import demo
 from Video_upload import video_upload
 
+
+# Helper method for importing Markdown files
+def markdownreader(file):
+    with open("Text/" + file) as f:
+        lines = f.readlines()
+        for line in lines:
+            st.markdown(line, unsafe_allow_html=True)
+
+
 # Hide first Radio Button
 st.markdown(
     """
@@ -16,13 +25,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("Heart rate estimation in video data")
+
 ### Main functionality
 with st.sidebar:
     st.title("Heart rate estimation in video data")
     st.text("Select type")
     implementation = st.radio(
-        "Choose algorithm framework: ", [" ", "Pre-recorded video", "Live-Feed", "Demo"]
+        "Choose algorithm framework: ",
+        [" ", "Pre-recorded video", "Live-Feed", "Demo", "Main"],
     )
     if implementation == "Pre-recorded video":
         st.text("Select video")
@@ -45,7 +55,8 @@ with st.sidebar:
         st.text("If video is too long, memory errors \n may occur.")
     # if implementation == "Demo":
     #   demo()
-
+if implementation == " " or implementation == "Main":
+    markdownreader("Main.md")
 
 if implementation == "Pre-recorded video":
     video_upload(video_data=video_file, method=method)
