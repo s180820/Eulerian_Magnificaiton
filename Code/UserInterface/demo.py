@@ -1,15 +1,13 @@
-import cv2
+
 import streamlit as st
 import pandas as pd
-import numpy as np
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import plotly.express as px  # interactive charts
-from Eulerian_Magnification.MethodizedEulerian import EulerianMagnification
-from Eulerian_Magnification.multiface import MultifaceEulerianMagnification
-
-
+import sys
+sys.path.append("../Eulerian_Magnification/")
+from Methodized_Eulerian import EulerianMagnification
+from Multiface_Eulerian import MultifaceEulerianMagnification
 def demo():
     st.title("Validation Demo")
     st.write(
@@ -19,7 +17,6 @@ def demo():
     placeholder2 = st.empty()
     cap2 = cv2.VideoCapture("Validation/val_vid.mp4")
     eulerian_processor = EulerianMagnification()
-    multiface_processor = MultifaceEulerianMagnification()
     bpms = []
     bpms_second = [0]
     rr = pd.read_csv("Validation/P1LC1_Mobi_RR-intervals.rr", header=None)

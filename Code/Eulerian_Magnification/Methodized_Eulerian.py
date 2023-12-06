@@ -1,7 +1,17 @@
+"""
+    Authors:
+        - Frederik Peetz-Schou Larsen
+        - Gustav Gamst Larsen
+
+    Year:
+        - 2023
+
+    Description:
+        - As part of "Advanced Project in Digital Media Engineering" on DTU
+"""
 import numpy as np
 import cv2
 import sys
-import streamlit as st
 
 PROTOTXT_PATH = "../../Models/Facial_recognition/deploy_prototxt.txt"
 MODEL_PATH = "../../Models/Facial_recognition/res10_300x300_ssd_iter_140000.caffemodel"

@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import cv2
-import matplotlib.pyplot as plt
 import plotly.express as px  # interactive charts
 import tempfile
-from Eulerian_Magnification.MethodizedEulerian import EulerianMagnification
-from Eulerian_Magnification.multiface import MultifaceEulerianMagnification
-
+import sys
+sys.path.append("../Eulerian_Magnification/")
+from Methodized_Eulerian import EulerianMagnification
+from Multiface_Eulerian import MultifaceEulerianMagnification
 
 def video_upload(video_data=None, method="Traditional Eulerian Magnification"):
     st.title("Video upload")
