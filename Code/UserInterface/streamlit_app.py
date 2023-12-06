@@ -1,11 +1,9 @@
 import streamlit as st
-from streamlithelper import StreamlitHelper
 from webcam_use import app_system_monitor
 from demo import demo
 from Video_upload import video_upload
 
-shelper = StreamlitHelper()
-
+# Hide first Radio Button
 st.markdown(
     """
     <style>

@@ -6,12 +6,13 @@ import psutil
 from pathlib import Path
 import queue
 import numpy as np
-from MethodizedEulerian import EulerianMagnification
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px  # interactive charts
-from multiface import MultifaceEulerianMagnification
+import sys
+sys.path.append("../Eulerian_Magnification/")
+from Methodized_Eulerian import EulerianMagnification
+from Multiface_Eulerian import MultifaceEulerianMagnification
 
 HERE = Path(__file__).parent
 

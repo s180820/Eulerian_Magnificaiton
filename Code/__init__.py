@@ -1,0 +1,2 @@
+from Eulerian_Magnification.Multiface_Eulerian import MultifaceEulerianMagnification
+from Eulerian_Magnification.Methodized_Eulerian import EulerianMagnification
