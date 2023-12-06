@@ -6,22 +6,31 @@ import plotly.express as px  # interactive charts
 import tempfile
 import sys
 sys.path.append("../Eulerian_Magnification/")
+sys.path.append("../validate_models/")
 from Methodized_Eulerian import EulerianMagnification
 from Multiface_Eulerian import MultifaceEulerianMagnification
+from main import *
 
 def video_upload(video_data=None, method="Traditional Eulerian Magnification"):
     st.title("Video upload")
+    
     placeholder = st.empty()
     if method == "Traditional Eulerian Magnification":
         eulerian_processor = EulerianMagnification()
     elif method == "Custom implemented Eulerian Magnification":
         eulerian_processor = MultifaceEulerianMagnification()
+    elif method == "MTTS":
+        pass
+    elif method == "HR_CNN":
+        pass
     else:
         print("No method selected")
         st.write("No method selected")
         return
     bpms = []
     bpms_second = [0]
+    nans = []
+    bpmES_deep = []
 
     time_idx = 1
     multiface_df = pd.DataFrame(columns=["Time", "BPM", "person"])
@@ -31,13 +40,21 @@ def video_upload(video_data=None, method="Traditional Eulerian Magnification"):
     else:
         tfile = tempfile.NamedTemporaryFile(delete=False)
         tfile.write(video_data.read())
+        test = Test_Methods(videoFileName = tfile.name)
+        if method == "MTTS":
+            with st.spinner(f'Computing HR using {method}'):
+                bpmES_deep = test.test_deep(method = "MTTS_CAN")
+        elif method == "HR_CNN":
+            with st.spinner(f'Computing HR using {method}'):
+                bpmES_deep = test.test_deep(method = "HR_CNN")
         cap = cv2.VideoCapture(tfile.name)
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 st.write("The video capture has ended")
                 break
-            # img = frame.to_ndarray(format="bgr24")
+    
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             if method == "Traditional Eulerian Magnification":
                 eulerian_processor.process_frame(frame, display_pyramid=True)
                 bpmES = eulerian_processor.get_bpm_over_time()
@@ -57,6 +74,8 @@ def video_upload(video_data=None, method="Traditional Eulerian Magnification"):
                 #   bpms = bpms[-200:]
                 # get hr for each second
             if len(bpms) > 30:
+                if method == "MTTS" or method == "HR-CNN":
+                    continue
                 bpm = np.mean(bpms[-30:])
                 bpms_second.append(bpm)
                 # new_row = pd.DataFrame([[time_idx, bpm, "Eulerian"]], columns=["Time", "BPM", "type"])
@@ -98,7 +117,19 @@ def video_upload(video_data=None, method="Traditional Eulerian Magnification"):
                         )
                         bpm_df = bpm_df.T
                         bpm_df = bpm_df.round(2)
-                    st.write(bpm_df.iloc[1:, :])
+                    elif method == "MTTS" or method == "HR_CNN":
+                        bpm_df = pd.DataFrame(bpmES_deep, columns=[method])
+                        bpm_df = bpm_df.describe()
+                        bpm_df = bpm_df.drop(["count", "min", "25%", "50%", "75%"])
+                        bpm_df = bpm_df.rename(
+                            index={"mean": "Mean", "max": "Max", "std": "Std"}
+                        )
+                        bpm_df = bpm_df.T
+                        bpm_df = bpm_df.round(2)
+                    if method == "Custom implemented Eulerian Magnification":
+                        st.write(bpm_df.iloc[1:, :])
+                    else:
+                        st.write(bpm_df)
 
                 fig = px.line(
                     x=np.arange(len(bpms_second)),
@@ -113,6 +144,12 @@ def video_upload(video_data=None, method="Traditional Eulerian Magnification"):
                         color="person",
                         labels={"x": "Frame", "y": "BPM"},
                     )
-                # fig = px.line(plot_df[plot_df["Time"].astype(int) > 6], x="Time", y="BPM",
-                #                       color="type", labels={"x": "Time", "y": "BPM"})
+                if method == "MTTS" or method == "HR_CNN":
+                    nans = [np.nan] * 6
+                    bpms = nans + bpmES_deep
+                    data = np.array([range(1, len(bpms)+1), bpms]).T
+                    
+                    plot_df = pd.DataFrame(data=data, columns=["Time", "BPM"])
+                    fig = px.line(plot_df[plot_df["Time"].astype(int) > 6], x="Time", y="BPM",
+                                        labels={"x": "Time", "y": "BPM"})
                 st.write(fig)

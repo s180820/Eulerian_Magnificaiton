@@ -18,7 +18,7 @@ class Test_Methods:
         print("extracting frames...")
         frames = extract_raw(self.videoFileName)
         #only choose 60 seconds
-        frames = frames[:60*self.fps]
+        #frames = frames[:60*self.fps]
         print("predicting BVP...")
         if method == "HR_CNN":
             bvp_pred = HR_CNN_bvp_pred(frames)

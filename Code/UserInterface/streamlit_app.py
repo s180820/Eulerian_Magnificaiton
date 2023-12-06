@@ -37,8 +37,12 @@ with st.sidebar:
                 "None",
                 "Traditional Eulerian Magnification",
                 "Custom implemented Eulerian Magnification",
+                "MTTS",
+                "HR_CNN"
             ),
         )
+        st.text("Beware, MTTS and HR_CNN computes the \n HR beforehand and is therfore \n computationally heavy with long videos.")
+        st.text("If video is too long, memory errors \n may occur.")
     # if implementation == "Demo":
     #   demo()
 

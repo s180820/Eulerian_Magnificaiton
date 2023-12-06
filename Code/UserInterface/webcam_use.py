@@ -193,7 +193,7 @@ def app_system_monitor():
                             bpm_stats_df = pd.DataFrame(
                                 flatten_data, columns=["Person", "mean", "max", "std"]
                             )
-                            bpm_stats_df = bpm_stats_df.reset_index(drop=True)
+                            bpm_stats_df = bpm_stats_df.set_index("Person")
 
                 except queue.Empty:
                     result = None
