@@ -22,4 +22,9 @@ The application is split into three parts.
 A demo model with a predefined video, ground truth data and pre-run deep learnig data. A live feed tab allowing you to visiualise the traditional Eulerian Magnification approach aswell as the custom implementation with shared buffers allowing multiple persons to be present. Finally a pre-recorded video setting where you can upload a video and run either of the four implementations. 
 
 
-**Disclaimer** Live versions of Deep learning frameworks are not available. In addition we've restricted the upload size as the methods are computationally heavy. We don't assume GPU based hardware, so the implementations are run on the CPU. 
+### Disclaimer
+
+Live versions of Deep learning frameworks are not available. In addition we've restricted the upload size as the methods are computationally heavy. We don't assume GPU based hardware, so the implementations are run on the CPU. 
+
+Furthermore the statistics run are run for 200 frames due to memory constraints.
+
