@@ -85,7 +85,7 @@ class EulerianMagnification:
         self.network = cv2.dnn.readNetFromCaffe(PROTOTXT_PATH, MODEL_PATH)
 
         # Init EulerianMagnification
-        self.firstFrame = np.zeros((300, 300, self.videoChannels))
+        self.firstFrame = np.zeros((50, 50, self.videoChannels))
         self.firstGauss = self.buildGauss(self.firstFrame)[self.levels]
 
         self.videoGauss = np.zeros(
@@ -95,17 +95,6 @@ class EulerianMagnification:
                 self.firstGauss.shape[1],
                 self.videoChannels,
             )
-        )
-
-        self.fourierTransformAvg = np.zeros((self.bufferSize))
-
-        self.frequencies = (
-            (1.0 * self.videoFrameRate)
-            * np.arange(self.bufferSize)
-            / (1.0 * self.bufferSize)
-        )
-        self.mask = (self.frequencies >= self.minFrequency) & (
-            self.frequencies <= self.maxFrequency
         )
 
     def compute_bbox(self, detections, h, w, i):

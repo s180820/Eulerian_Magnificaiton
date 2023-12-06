@@ -139,6 +139,7 @@ class MultifaceEulerianMagnification:
         self.firstGauss = self.buildGauss(self.firstFrame)[self.levels]
 
         self.videoGauss = {}
+        self.fourierTransform = {}
 
         self.fourierTransformAvg = {}
 
@@ -150,7 +151,7 @@ class MultifaceEulerianMagnification:
         self.mask = (self.frequencies >= self.minFrequency) & (
             self.frequencies <= self.maxFrequency
         )
-        self.i = 0
+        self.i = {}
 
     def get_bpm_over_time(self):
         """
@@ -199,11 +200,19 @@ class MultifaceEulerianMagnification:
             bbox = ((face.left(), face.top()), (face.right(), face.bottom()))
             bounding_boxes.append((bbox, match))
 
+            # Process bounding boxes and face IDs as needed
+            for bbox, face_id in bounding_boxes:
+                self.runner(bbox=bbox, face_id=face_id)
+
             cv2.rectangle(frame, bbox[0], bbox[1], (0, 255, 0), 2)
             # Display the label
             if match is not None:
                 label_text = self.labels[match]
-                bpm_text = f"BPM: {self.BPMs.get(match, [0])[-1]:.2f}"  # Display a static BPM value
+                print(match)
+                if self.i[match] > self.bpmBufferSize:
+                    bpm_text = f"BPM: {int(self.bpmBuffer.get(match).mean())}"  # Display a static BPM value
+                else:
+                    bpm_text = "BPM: Calculating..."
                 cv2.putText(
                     self.frame,
                     label_text,
@@ -235,18 +244,15 @@ class MultifaceEulerianMagnification:
                     (0, 255, 0),
                     2,
                 )
-            # # Process bboxes
-            for bbox, face_id in bounding_boxes:
-                self.runner(bbox=bbox, face_id=face_id)
-            # print(self.BPMs)
         return self.frame
 
     def estimate_heart_rate(self, fourierTransform, face_id):
         if face_id not in self.bpmBufferIndex:
             print(f"[DEBUG - Pulse] {face_id} not found in bpmBufferIndex. Setting 0")
             self.bpmBufferIndex[face_id] = 0
+            self.i[face_id] = 0
         if self.bufferIdx[face_id] % self.bpmCalculationFrequency == 0:
-            self.i += 1
+            self.i[face_id] += 1
             for buf in range(self.bufferSize):
                 self.fourierTransformAvg[face_id][buf] = np.real(
                     fourierTransform[buf].mean()
@@ -258,6 +264,7 @@ class MultifaceEulerianMagnification:
                 self.bpmBufferIndex[face_id] = (
                     self.bpmBufferIndex[face_id] + 1
                 ) % self.bpmBufferSize
+
                 return bpm
 
     def eulerian_magnification(
@@ -288,11 +295,11 @@ class MultifaceEulerianMagnification:
         # If already exist or just created -- Continue computing fft.
         self.videoGauss[face_id][self.bufferIdx[face_id]] = pyramid
 
-        fourierTransform = np.fft.fft(self.videoGauss[face_id], axis=0)
-        fourierTransform[self.mask == False] = 0
+        self.fourierTransform[face_id] = np.fft.fft(self.videoGauss[face_id], axis=0)
+        self.fourierTransform[face_id][self.mask == False] = 0
 
         bpm = self.estimate_heart_rate(
-            fourierTransform=fourierTransform, face_id=face_id
+            fourierTransform=self.fourierTransform[face_id], face_id=face_id
         )
         # print(f"[VERBOSE] Heartrate of person {face_id}: {bpm}")
         if face_id not in self.BPMs:
@@ -322,7 +329,7 @@ class MultifaceEulerianMagnification:
             ret, self.frame = self.cap.read()
             self.frame_counter += 1
 
-            if self.frame_counter % 1 == 0:
+            if True:
                 # Convert the frame to grayscale for face detection
                 gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
 
@@ -369,10 +376,17 @@ class MultifaceEulerianMagnification:
                         2,
                     )
 
+                    # Process bounding boxes and face IDs as needed
+                    for bbox, face_id in bounding_boxes:
+                        self.runner(bbox=bbox, face_id=face_id)
+
                     # Display the label
                     if match is not None:
                         label_text = self.labels[match]
-                        bpm_text = f"BPM: {self.BPMs.get(match, [0])[-1]:.2f}"  # Display a static BPM value
+                        if match in self.i and self.i[match] > self.bpmBufferSize:
+                            bpm_text = f"BPM: {int(self.bpmBuffer.get(match).mean())}"  # Display a static BPM value
+                        else:
+                            bpm_text = "BPM: Calculating..."
                         cv2.putText(
                             self.frame,
                             label_text,
@@ -406,9 +420,6 @@ class MultifaceEulerianMagnification:
                             2,
                         )
 
-                # Process bounding boxes and face IDs as needed
-                for bbox, face_id in bounding_boxes:
-                    self.runner(bbox=bbox, face_id=face_id)
                 # Display the frame
                 cv2.imshow("Webcam", self.frame)
 
